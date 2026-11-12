@@ -19,7 +19,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: Build, check and make the .dmg
         run: packaging/build_mac.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Audiobook-Maker-mac
           path: dist-build/*.dmg
