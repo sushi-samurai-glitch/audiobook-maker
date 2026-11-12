@@ -1,0 +1,10 @@
+# Checked in CI on every pull request: `ruff check .`
+line-length = 120
+target-version = "py311"
+
+[lint]
+# Real errors (pyflakes, syntax), likely bugs (bugbear) and zip() without strict= where lengths must match.
+select = ["F", "E9", "B"]
+ignore = [
+    "B007",  # unused loop variables are kept where they name what the tuple holds
+]

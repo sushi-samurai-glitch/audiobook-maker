@@ -1,0 +1,18 @@
+# Pinned to the versions the app is known to work with (Python 3.11 on an Apple silicon Mac, 2026-11-10).
+# To upgrade one, change its version here, install, and narrate a short test book before committing.
+kokoro==0.9.4
+chatterbox-tts==0.1.7
+torch==2.6.0  # what Kokoro and Chatterbox run on; a new release can change their output or break them
+torchaudio==2.6.0
+soundfile==0.14.0
+numpy==1.26.4
+setuptools==80.10.2  # below 81: perth (Chatterbox watermarker) still imports pkg_resources
+customtkinter==6.0.0
+pillow==12.3.0  # cover image thumbnails
+sounddevice==0.5.6
+faster-whisper==1.2.1  # Chatterbox: checks each paragraph for skipped words (optional)
+num2words==0.5.14  # the skipped-words check compares numbers as they are spoken
+soxr==1.1.0  # the skipped-words check resamples audio for Whisper
+pypdf==7.0.0  # importing PDF books (optional; EPUB and Word need nothing extra)
+send2trash==2.1.0  # Delete moves books and previews to the Trash
+platformdirs==4.13.5  # where a fresh install keeps its files and audiobooks

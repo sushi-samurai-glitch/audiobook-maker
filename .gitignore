@@ -1,0 +1,34 @@
+# Python
+.venv/
+__pycache__/
+
+# Generated audio and logs
+build/
+out/
+samples/
+app.log
+
+# Book manuscripts stay local
+chapters/
+test_chapters/*
+!test_chapters/01-arrival.md
+!test_chapters/02-house.md
+
+# Pre-git snapshot of the old GUI; git history replaces it
+backup_before_redesign/
+
+# Local settings (each book's audiobook-settings.json, and the last book opened)
+app_state.json
+audiobook-settings.json
+.claude/settings.local.json
+.DS_Store
+
+# Voice clips recorded in the app (your own voice)
+voices/
+
+# Building the Mac app (packaging/build_mac.sh)
+dist-build/
+packaging/bin/
+packaging/icon.png
+.coverage
+THIRD-PARTY-LICENSES.txt

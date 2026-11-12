@@ -1,0 +1,5 @@
+# What building the Mac app needs on top of requirements.txt (see packaging/build_mac.sh).
+pyinstaller==6.22.3
+# Kokoro's English reader (misaki) downloads this spaCy model with pip the first time it runs, which can't work
+# inside a packaged app, so the build installs it and the app ships with it.
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

@@ -1,0 +1,19 @@
+#!/bin/bash
+# Finder starts apps with a minimal PATH; ffmpeg and espeak-ng come from Homebrew.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export PYTHONWARNINGS=ignore
+# The app lives in the project folder: Audiobook Maker.app/Contents/MacOS/launcher is three levels down.
+# (To start it from the Dock or Applications, drag an alias of it there rather than moving it.)
+PROJECT="$(cd "$(dirname "$0")/../../.." && pwd)"
+if [ ! -f "$PROJECT/gui.py" ] || [ ! -x "$PROJECT/.venv/bin/python" ]; then
+    osascript -e 'display alert "Audiobook Maker can'"'"'t start" message "Keep Audiobook Maker.app in the project folder, next to gui.py and .venv. To open it from the Dock or Applications, use an alias instead of moving it."' >/dev/null
+    exit 1
+fi
+# The log goes where macOS keeps app logs (Console can open it), not in the project folder.
+LOGS="$HOME/Library/Logs/Audiobook Maker"
+mkdir -p "$LOGS"
+# Past 5 MB, start a fresh log and keep one old copy.
+if [ -f "$LOGS/app.log" ] && [ "$(stat -f %z "$LOGS/app.log")" -gt 5000000 ]; then
+    mv -f "$LOGS/app.log" "$LOGS/app.log.1"
+fi
+exec "$PROJECT/.venv/bin/python" "$PROJECT/gui.py" >> "$LOGS/app.log" 2>&1

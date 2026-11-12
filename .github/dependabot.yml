@@ -1,0 +1,8 @@
+# Weekly pull requests for out-of-date GitHub Actions. Python packages are pinned on purpose (the voice engines are
+# picky about versions), so they're updated by hand after a test narration on a Mac.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

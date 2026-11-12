@@ -1,0 +1,11 @@
+Audiobook Maker is free and isn't signed with a paid Apple developer account, so the first time you open it
+macOS says it can't check it for malicious software. To open it:
+
+1. Drag Audiobook Maker into the Applications folder, then double-click it. macOS says it can't be opened.
+   Click Done (or OK).
+2. Open System Settings, then Privacy & Security.
+3. Scroll down to Security. Next to "Audiobook Maker was blocked", click Open Anyway, and confirm.
+
+After that it opens normally, like any other app.
+
+The source code of this exact version is on GitHub, under the version's tag.

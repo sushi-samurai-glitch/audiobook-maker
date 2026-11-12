@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: System packages (ffmpeg for audio, PortAudio for playback, Tk for the GUI)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg libportaudio2 python3-tk xvfb
+      # The voice models (Kokoro, Chatterbox, torch) aren't needed: the tests fake narration.
+      - name: Python packages
+        run: |
+          grep -E '^(soundfile|numpy|customtkinter|pillow|sounddevice|num2words|soxr|pypdf|send2trash|platformdirs)==' requirements.txt > ci-requirements.txt
+          pip install -r ci-requirements.txt -r requirements-dev.txt
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+      - name: The app opens
+        run: |
+          xvfb-run -a python -c "
+          import customtkinter as ctk, gui
+          ctk.set_appearance_mode('dark')
+          app = gui.App()
+          app.after(2000, app.destroy)
+          app.mainloop()
+          "
