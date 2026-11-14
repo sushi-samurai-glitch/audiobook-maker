@@ -194,6 +194,14 @@ class SettingsWindow(ctk.CTkToplevel):
                                      height=30)
         self.show_update(updates.known())
 
+        ctk.CTkFrame(box, fg_color=LINE, height=1).grid(row=8, column=0, columnspan=2, sticky="ew", padx=18)
+        label(box, "Support", 14, TEXT, "bold").grid(row=9, column=0, sticky="w", padx=18, pady=(12, 2))
+        label(box, "Audiobook Maker is free and always will be. If it's useful to you,\n"
+                   "you can buy me a coffee to support my free apps.",
+              12, TEXT3, justify="left").grid(row=10, column=0, sticky="w", padx=18, pady=(0, 16))
+        button(box, "Buy me a coffee", self.open_support, "ghost", width=130, height=30).grid(
+            row=9, column=1, rowspan=2, padx=(8, 14), pady=(12, 16))
+
     # ----- voices and storage
 
     def refresh_voices(self):
@@ -338,6 +346,9 @@ class SettingsWindow(ctk.CTkToplevel):
     def open_update(self):
         if self.update_url:
             webbrowser.open(self.update_url)
+
+    def open_support(self):
+        webbrowser.open(version.SUPPORT_URL)
 
     def updates_changed(self):
         updates.remember_enabled(self.update_switch.get())

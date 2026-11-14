@@ -1,5 +1,7 @@
 # Audiobook Maker
 
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sushi_samurai)
+
 Turn a book into an audiobook on your own computer, for free. Choose your chapters (or import an EPUB, Word or PDF
 file), pick a voice, and the app narrates the book into an .m4b audiobook with chapter markers and cover art. It can
 also export one MP3 per chapter. Everything runs offline once the voices have downloaded.
@@ -102,6 +104,12 @@ The code: `gui.py` is the window, with one module per part (`book_step.py`, `voi
 `create_step.py`, `library_actions.py`, `runner.py`). `audiobook.py` does the narrating and building, `cast.py` finds
 who is speaking, `checker.py` runs the skipped-word check, `importer.py` reads EPUB, Word and PDF, and `library.py` and
 `player.py` back the library and the player.
+
+## Support
+
+Audiobook Maker is free and always will be. If it's useful to you, you can
+[buy me a coffee](https://buymeacoffee.com/sushi_samurai) to support my free apps. The app itself never asks: the only
+link is a Buy me a coffee button in Settings, under About.
 
 ## Licence
 

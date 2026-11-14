@@ -393,6 +393,9 @@ When a new version is out, **Version … is out** appears at the bottom of the l
 
 The app checks once a day. **Check now** in Settings checks straight away, and the switch beside Check for updates turns the daily check off.
 
+## Supporting the app
+Audiobook Maker is free, with no ads, no account and nothing to unlock. If it's useful to you and you'd like to say thanks, **Buy me a coffee** in Settings, under About, opens a page where you can support my free apps (buymeacoffee.com/sushi_samurai). It's entirely optional: the app never asks or reminds you.
+
 ## Keyboard
 The main actions have keyboard shortcuts. On Windows, use Ctrl where it says ⌘.
 
