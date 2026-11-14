@@ -8,8 +8,8 @@ import threading
 
 try:
     import sounddevice as sd
-except OSError:  # PortAudio missing: the app still opens, and playing says why it can't
-    sd = None
+except Exception:  # PortAudio missing (OSError) or no sound system to start (PortAudioError): the app still opens,
+    sd = None         # and playing says why it can't
 
 import tools
 
@@ -111,7 +111,7 @@ class Player:
 
     def _run(self, stop, start, speed):
         if sd is None:
-            self.error = "No audio output: the PortAudio library is missing"
+            self.error = "No audio output: no sound device, or the PortAudio library is missing"
             self.playing = False
             return
         if not tools.find("ffmpeg"):

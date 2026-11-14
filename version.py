@@ -10,6 +10,8 @@ import tools
 VERSION = "0.9.0"  # 0.x while the app is in beta; also set in Audiobook Maker.app/Contents/Info.plist
 COPYRIGHT = "Copyright © 2026 sushi_samurai"
 LICENSE_NOTE = "Free software under the GNU GPL, version 3. It comes with no warranty."
+# Opened only when someone clicks Buy me a coffee in Settings; the app never asks or reminds.
+SUPPORT_URL = "https://buymeacoffee.com/sushi_samurai"
 # The full licences of everything bundled: made by the build (packaging/build_mac.sh); from source, the summary.
 NOTICES = [Path(__file__).with_name("THIRD-PARTY-LICENSES.txt"), Path(__file__).with_name("THIRD-PARTY-NOTICES.md")]
 
