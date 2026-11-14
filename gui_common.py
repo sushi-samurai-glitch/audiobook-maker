@@ -9,7 +9,7 @@ import soundfile as sf
 
 import audiobook
 import desktop
-from run_settings import CHATTERBOX, KOKORO  # noqa: F401  (the step modules import them from here too)
+from run_settings import KOKORO  # noqa: F401  (the step modules import it from here too)
 
 KOKORO_VOICES = [
     "am_michael", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_onyx", "am_puck",
@@ -21,13 +21,9 @@ KOKORO_VOICES = [
 # Narration-friendly starting values; the Reset button restores them.
 RECOMMENDED = {
     "speed": 0.95,
-    "exaggeration": 0.5,
-    "cfg_weight": 0.3,
-    "temperature": 0.6,
     "paragraph_pause": audiobook.PARAGRAPH_PAUSE,
     "title_pause": audiobook.TITLE_PAUSE,
 }
-ENGINE_LABELS = {KOKORO: "Kokoro · fast", CHATTERBOX: "Chatterbox · expressive, slower"}
 ACCENT_CHOICES = {"Any accent": None, "American": "US", "British": "UK"}
 GENDER_CHOICES = {"Any voice": None, "Female": "Female", "Male": "Male"}
 PRONUNCIATIONS_TEMPLATE = """\

@@ -16,3 +16,10 @@ The first public build, for Apple silicon Macs.
 - Says when a new version is out (checked once a day on GitHub; can be turned off in Settings).
 - Keyboard shortcuts for every step (Help, Keyboard), and Larger text in Settings.
 - Settings → Licences lists everything the app includes and its licence.
+- The Cast window's "who said what.txt" is no longer read as a chapter.
+- In the Cast window, a voice given to one character no longer shows up in the other characters' lists.
+- "The first time, it downloads…" notes appear only when the voice model really is missing: the app checks
+  what's already on disk when it opens and before each run (a quick, offline look at the files).
+- Kokoro is now the only voice engine. Chatterbox, the slower expressive engine, was taken out with its voice
+  clips, recording and skipped-word check: it was slow and too often skipped or garbled words. Books set up with it
+  open with their Kokoro voice, and Settings offers to delete its old downloads (about 3.5 GB).

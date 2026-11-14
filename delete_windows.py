@@ -1,4 +1,4 @@
-"""The Delete dialog for a book, and naming the voice previews shown in the library."""
+"""The Delete dialogs for a book and for a recorded voice clip, and naming the voice previews shown in the library."""
 from pathlib import Path
 
 import customtkinter as ctk
@@ -56,8 +56,51 @@ class DeleteDialog(ctk.CTkToplevel):
         self.on_delete(chapters_too)
 
 
+class DeleteClipDialog(ctk.CTkToplevel):
+    """Ask before deleting a recorded voice clip, saying what uses it. Calls on_delete() only on Move to Trash.
+
+    Cancel has the focus, so Return or Escape keeps the clip: only a deliberate click on Move to Trash deletes it."""
+
+    def __init__(self, master, path, uses, on_delete):
+        super().__init__(master)
+        self.title("Delete voice clip")
+        self.resizable(False, False)
+        self.configure(fg_color=BG)
+        self.on_delete = on_delete
+        label(self, f"Delete “{Path(path).stem}”?", 22, TEXT, "bold", wraplength=420, justify="left").pack(
+            anchor="w", padx=28, pady=(26, 8))
+        label(self, f"The recording ({Path(path).name}) goes to the Trash, so you can put it back from there if you "
+                    "change your mind.", 14, TEXT2, wraplength=420, justify="left").pack(anchor="w", padx=28)
+        if uses:
+            box = ctk.CTkFrame(self, fg_color=CARD, border_color=CARD_LINE, border_width=1, corner_radius=12)
+            box.pack(fill="x", padx=28, pady=(18, 0))
+            label(box, "IT'S IN USE", 11, TEXT3, "bold").pack(anchor="w", padx=16, pady=(12, 4))
+            for i, use in enumerate(uses):
+                label(box, f"•  {use}", 13, TEXT, wraplength=380, justify="left").pack(
+                    anchor="w", padx=16, pady=(0, 12 if i == len(uses) - 1 else 4))
+        buttons = ctk.CTkFrame(self, fg_color="transparent")
+        buttons.pack(fill="x", padx=28, pady=(22, 24))
+        button(buttons, "Move to Trash", self.confirm, "danger", width=150, font=F(14, "bold")).pack(side="right")
+        self.cancel = button(buttons, "Cancel", self.destroy, "ghost", width=100)
+        self.cancel.pack(side="right", padx=(0, 10))
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Return>", lambda e: self.destroy())  # Return is the safe choice, never the delete
+        self.transient(master)
+        self.after(50, self.grab_and_focus)
+
+    def grab_and_focus(self):
+        self.lift()
+        self.cancel.focus_set()
+        self.grab_set()
+
+    def confirm(self):
+        self.destroy()
+        self.on_delete()
+
+
 def preview_name(path):
-    """'Kokoro · Michael', 'Kokoro · Lewis + Michael' or 'Chatterbox · narrator' for a file in samples/."""
+    """'Kokoro · Michael' or 'Kokoro · Lewis + Michael' for a file in samples/ (or 'Chatterbox · narrator' for a
+    preview an earlier version made)."""
     engine, _, voice = Path(path).stem.partition("-")
     if engine == "kokoro":
         return "Kokoro · " + " + ".join(v.strip()[3:].title() for v in voice.split(","))

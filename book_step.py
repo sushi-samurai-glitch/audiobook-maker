@@ -128,7 +128,7 @@ class BookStep:
             except (OSError, UnicodeDecodeError):
                 name = file.stem
             label(row, shorten(name, 64), 13, TEXT, "bold").pack(side="left")
-            # Narrates just this chapter again (a new take with Chatterbox), then rebuilds the .m4b.
+            # Narrates just this chapter again, then rebuilds the .m4b.
             self.redo_buttons.append(button(row, "Redo", lambda n=i: self.start(sample=False, redo={n}), "ghost",
                                             width=56, height=28, font=F(12, "bold")))
         self.no_chapters.grid_remove()
@@ -158,10 +158,9 @@ class BookStep:
         try:
             files = sorted((p.name, p.stat().st_mtime_ns) for p in folder.iterdir()
                            if book_settings.is_chapter(p) or p.name == audiobook.PRONUNCIATIONS_FILE)
-            clip = Path(args.ref).stat().st_mtime_ns if args.ref else None
         except OSError:
             return
-        key = (run_settings.chapters_key(args), files, clip)
+        key = (run_settings.chapters_key(args), files)
         if key == self.redo_key:
             return
         if key != self.redo_pending[0]:
@@ -172,7 +171,7 @@ class BookStep:
         self.redo_key = key
         try:
             made = audiobook.made_chapters(args)
-        except Exception:  # a half-saved chapter or missing clip: show no Redo rather than an error
+        except Exception:  # a half-saved chapter: show no Redo rather than an error
             made = set()
         for i, redo in enumerate(self.redo_buttons, 1):
             if i in made:
@@ -197,8 +196,7 @@ class BookStep:
 
     def book_state(self):
         """What is saved for the book: voice, settings (rounded like the render args), title, author and cover."""
-        state = {"engine": self.engine, "voice_a": self.voice_a, "voice_b": self.voice_b, "clip": self.clip,
-                 "check": bool(self.check_switch.get()), "cast": self.cast}
+        state = {"voice_a": self.voice_a, "voice_b": self.voice_b, "cast": self.cast}
         state.update({name: round(getattr(self, name).get(), 2) for name in RECOMMENDED})
         state.update(title=self.book_title.get().strip(), author=self.author.get().strip(), cover=self.cover_path)
         return state
@@ -224,11 +222,8 @@ class BookStep:
                 slider = getattr(self, name)
                 slider.set(settings[name])
                 self.value_labels[slider].configure(text=f"{settings[name]:.2f}")
-        self.clip = settings.get("clip")
         self.cast = settings.get("cast") or {"enabled": False, "dialogue": None, "voices": {}}
         self.refresh_cast()
-        if "check" in settings:
-            self.check_switch.select() if settings["check"] else self.check_switch.deselect()
         for field in ("title", "author"):
             entry_ = self.book_title if field == "title" else self.author
             entry_.delete(0, "end")
@@ -238,7 +233,8 @@ class BookStep:
             self.set_cover(settings["cover"])
         else:
             self.clear_cover()
-        self.set_engine(settings.get("engine", self.engine))  # also refreshes the clip list and the rhythm
+        self.set_preview("idle")
+        self.draw_rhythm()
         self.refresh_voices()
         if settings:
             self._append(f"Loaded the voice and settings saved with {Path(self.folder).name}.")

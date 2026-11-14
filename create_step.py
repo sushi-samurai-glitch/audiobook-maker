@@ -14,7 +14,7 @@ import book_settings
 import downloads
 import library
 import paths
-from gui_common import COVER_BG, GENTLE_ON, KOKORO, REVEAL_LABEL, STEPS, SUMMARY_ROWS, shorten, voice_info
+from gui_common import COVER_BG, GENTLE_ON, REVEAL_LABEL, STEPS, SUMMARY_ROWS, shorten, voice_info
 from theme import (
     AMBER,
     AMBER_SOFT,
@@ -109,14 +109,10 @@ class CreateStep:
         chapters = f"{count} chapter{'s' if count != 1 else ''}"
         self.step_title.configure(text=shorten(title, 30))
 
-        kokoro = self.engine == KOKORO
-        if kokoro:
-            narrator = voice_info(self.voice_a)[0]
-            if self.voice_b:
-                narrator += f" + {voice_info(self.voice_b)[0]}"
-        else:
-            narrator = Path(self.clip).stem if self.clip else "Built-in voice"
-        if kokoro and self.cast.get("enabled"):
+        narrator = voice_info(self.voice_a)[0]
+        if self.voice_b:
+            narrator += f" + {voice_info(self.voice_b)[0]}"
+        if self.cast.get("enabled"):
             voices = len(self.cast.get("voices", {}))
             characters = f"{voices} character voice{'s' if voices != 1 else ''}"
         else:
@@ -127,12 +123,9 @@ class CreateStep:
         image = self.cover_image(56)
         self.voice_cover.configure(image=image)
         self.voice_facts["Narrator"].configure(text=shorten(narrator, 20))
-        self.voice_facts["Speed"].configure(text=f"{speed:.2f}" if kokoro else f"Pacing {self.cfg_weight.get():.2f}")
+        self.voice_facts["Speed"].configure(text=f"{speed:.2f}")
         self.voice_facts["Characters"].configure(text=characters)
         self.refresh_blend()
-        for card_ in self.extra_cards:
-            card_.grid() if kokoro else card_.grid_remove()
-        self.extras_note.grid(row=3, column=0, sticky="ew") if not kokoro else self.extras_note.grid_remove()
 
         if self.step != "create":
             return
@@ -140,7 +133,7 @@ class CreateStep:
         self.create_cover.configure(image=image, text="" if image else title)
         made = set()
         if count:
-            with suppress(Exception):  # a half-saved chapter or missing clip: count nothing as made
+            with suppress(Exception):  # a half-saved chapter: count nothing as made
                 made = audiobook.made_chapters(self.render_args())
         if not has_book:
             chapter_text = "No book chosen yet"
@@ -150,28 +143,22 @@ class CreateStep:
             chapter_text = f"{chapters}, {len(made)} narrated already"
         else:
             chapter_text = chapters
-        if kokoro:
-            sound = f"Speed {speed:.2f}"
-        else:
-            sound = (f"Exaggeration {self.exaggeration.get():.2f} · pacing {self.cfg_weight.get():.2f} · "
-                     f"temperature {self.temperature.get():.2f}")
+        sound = f"Speed {speed:.2f}"
         sound += f" · paragraph pause {self.paragraph_pause.get():.2f} s · heading pause {self.title_pause.get():.2f} s"
         values = {
             "Book": title + (f" · {author}" if author else ""),
             "Chapters": chapter_text,
-            "Narrator": f"{narrator} · {self.engine}",
+            "Narrator": narrator,
             "Sound": sound,
-            "Characters": characters + ("" if kokoro else " (character voices need Kokoro)"),
+            "Characters": characters,
         }
         for name, value in values.items():
             self.summary_rows[name].configure(text=shorten(value, 120))
         left = count - len(made) if has_book else 0
         if has_book and not left:
             estimate = "Every chapter is narrated, so this only takes a moment."
-        elif kokoro:
-            estimate = "Kokoro takes about a minute per chapter. Finished chapters are kept if you stop."
         else:
-            estimate = "Chatterbox takes about an hour per chapter. Finished chapters are kept if you stop."
+            estimate = "Kokoro takes about a minute per chapter. Finished chapters are kept if you stop."
         self.estimate_text.configure(text=estimate)
         self.refresh_gentle()
 
@@ -271,15 +258,10 @@ class CreateStep:
 
         for row in self.summary.winfo_children():
             row.destroy()
-        rows = [("Engine", args.engine.title()), ("Voice", voice_label)]
-        if args.engine == "kokoro":
-            rows.append(("Speed", f"{args.speed:.2f}"))
-            cast = args.cast or {}
-            count = len(cast.get("voices", {})) if cast.get("enabled") else 0
-            rows.append(("Characters", f"{count} with their own voice" if count else "One voice"))
-        else:
-            rows += [("Exaggeration", f"{args.exaggeration:.2f}"), ("Pacing", f"{args.cfg_weight:.2f}"),
-                     ("Temperature", f"{args.temperature:.2f}")]
+        rows = [("Voice", voice_label), ("Speed", f"{args.speed:.2f}")]
+        cast = args.cast or {}
+        count = len(cast.get("voices", {})) if cast.get("enabled") else 0
+        rows.append(("Characters", f"{count} with their own voice" if count else "One voice"))
         rows += [("Paragraph pause", f"{args.paragraph_pause:.2f} s"), ("Heading pause", f"{args.title_pause:.2f} s")]
         for i, (name, value) in enumerate(rows):
             label(self.summary, name, 13, TEXT2).grid(row=i, column=0, sticky="w", pady=4)
@@ -409,10 +391,7 @@ class CreateStep:
         self.mp3_btn.pack(side="left")
 
     def show_done(self, args, out, count):
-        if args.engine == "kokoro":
-            voice = " blended with ".join(voice_info(v.strip())[0] for v in args.voice.split(","))
-        else:
-            voice = f"the voice in {Path(args.ref).name}" if args.ref else "Chatterbox's built-in voice"
+        voice = " blended with ".join(voice_info(v.strip())[0] for v in args.voice.split(","))
         chapters = f"{count} chapter{'s' if count != 1 else ''}"
         self.show_finished(out, f"{chapters}, read by {voice}.", args.title, args.author, args.cover)
 

@@ -5,19 +5,20 @@ from pathlib import Path
 
 BOOK_FILE = "audiobook-settings.json"  # saved in the chapters folder, next to the chapter files
 PRONUNCIATIONS_FILE = "pronunciations.txt"  # word = how to say it, in the chapters folder; never read as a chapter
+WHO_SAID_WHAT = "who said what.txt"  # the Cast window's list of who says each line; never read as a chapter
+NOT_CHAPTERS = {PRONUNCIATIONS_FILE, WHO_SAID_WHAT}  # the app's own .txt files in a chapters folder
 CHAPTER_TYPES = (".md", ".txt")
 APP_STATE = Path("app_state.json")  # in the project folder: which book to open at launch
 
 # Allowed range of each slider; values outside are clamped, so a hand-edited file can't break the app.
 RANGES = {
     "speed": (0.5, 2.0),
-    "exaggeration": (0.25, 2.0),
-    "cfg_weight": (0.0, 1.0),
-    "temperature": (0.3, 1.5),
     "paragraph_pause": (0.0, 2.0),
     "title_pause": (0.0, 3.0),
 }
-ENGINES = ("Kokoro", "Chatterbox")
+# What earlier versions saved for Chatterbox, the second engine, which was taken out. It's ignored, but kept in the
+# file when the book is saved again, so nothing is lost if a book is opened in an older copy of the app.
+CHATTERBOX_KEYS = ("engine", "clip", "clip_cast", "check", "exaggeration", "cfg_weight", "temperature")
 
 
 def read_json(path):
@@ -37,12 +38,10 @@ def write_json(path, data):
 
 
 def clean(data, voices):
-    """Keep only valid settings: known engine and voices, numbers in range, files that still exist.
+    """Keep only valid settings: known voices, numbers in range, a cover that still exists.
 
     Returns (settings, problems), where problems lists what was dropped, in words for the log."""
     settings, problems = {}, []
-    if data.get("engine") in ENGINES:
-        settings["engine"] = data["engine"]
     voice_a, voice_b = data.get("voice_a"), data.get("voice_b")
     if voice_a in voices:
         settings["voice_a"] = voice_a
@@ -51,8 +50,6 @@ def clean(data, voices):
         value = data.get(name)
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             settings[name] = round(min(max(float(value), low), high), 2)
-    if isinstance(data.get("check"), bool):
-        settings["check"] = data["check"]
     if isinstance(data.get("cast"), dict):
         c = data["cast"]
         settings["cast"] = {"enabled": c.get("enabled") is True,
@@ -62,16 +59,10 @@ def clean(data, voices):
     for name in ("title", "author"):
         if isinstance(data.get(name), str):
             settings[name] = data[name]
-    for name, what in (("clip", "voice clip"), ("cover", "cover image")):
-        path = data.get(name)
-        if isinstance(path, str) and path:
-            if Path(path).is_file():
-                settings[name] = path
-            else:
-                problems.append(f"The saved {what} is missing: {path}")
-                settings[name] = None
-        else:
-            settings[name] = None
+    path = data.get("cover")
+    if isinstance(path, str) and path and not Path(path).is_file():
+        problems.append(f"The saved cover image is missing: {path}")
+    settings["cover"] = path if isinstance(path, str) and path and Path(path).is_file() else None
     return settings, problems
 
 
@@ -83,16 +74,18 @@ def load_book(folder, voices):
 
 def save_book(folder, settings):
     if Path(folder).is_dir():
-        # Kept as they are: the chapters left out in Browse, and the file name claimed by library.claim_output.
+        # Kept as they are: the chapters left out in Browse, the file name claimed by library.claim_output, and
+        # any Chatterbox settings an earlier version saved.
         saved = read_json(Path(folder) / BOOK_FILE)
         kept = {name: saved[name] for name in ("skip", "output") if saved.get(name)}
+        kept.update({name: saved[name] for name in CHATTERBOX_KEYS if name in saved})
         write_json(Path(folder) / BOOK_FILE, {**settings, **kept})
 
 
 def is_chapter(path):
     """True for a file that can be a chapter: .md or .txt, but not pronunciations.txt or a hidden file."""
     path = Path(path)
-    return (path.suffix.lower() in CHAPTER_TYPES and path.name != PRONUNCIATIONS_FILE
+    return (path.suffix.lower() in CHAPTER_TYPES and path.name.lower() not in NOT_CHAPTERS
             and not path.name.startswith("."))
 
 

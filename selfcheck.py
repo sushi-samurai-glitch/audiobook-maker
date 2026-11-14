@@ -1,6 +1,6 @@
 """A check that a built app has everything it needs: `Audiobook Maker --self-check` (or python gui.py --self-check).
 
-Imports every part the app loads only when narrating (Kokoro, its English data, Chatterbox, Whisper), finds the
+Imports every part the app loads only when narrating (Kokoro and its English data), finds the
 bundled FFmpeg, and, with --narrate and Kokoro's model already downloaded, makes a short audiobook offline.
 Prints one line per check and exits with 1 if any failed. The build script runs it on every build."""
 import importlib
@@ -66,10 +66,9 @@ def narrate():
         cwd = Path.cwd()
         os.chdir(tmp)
         try:
-            choices = dict(folder=str(book), engine=run_settings.KOKORO, voice_a="am_michael", voice_b=None, clip=None,
-                           title="Check", author="Check", cover=None, check=False, gentle=False,
-                           cast={"enabled": False}, speed=1.0, exaggeration=0.5, cfg_weight=0.3, temperature=0.6,
-                           paragraph_pause=0.6, title_pause=1.2)
+            choices = dict(folder=str(book), voice_a="am_michael", voice_b=None, title="Check", author="Check",
+                           cover=None, gentle=False, cast={"enabled": False}, speed=1.0, paragraph_pause=0.6,
+                           title_pause=1.2)
             out = audiobook.run(run_settings.render_args(choices), log=lambda m: None)
             size = Path(out).stat().st_size
         finally:
@@ -77,23 +76,6 @@ def narrate():
     if size < 10_000:
         raise RuntimeError(f"audiobook is only {size} bytes")
     return f"{size // 1000} KB .m4b"
-
-
-def chatterbox():
-    """One sentence with Chatterbox's built-in voice, offline (its model must already be downloaded)."""
-    import os
-
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    from argparse import Namespace
-
-    import audiobook
-
-    args = Namespace(engine="chatterbox", ref=None, exaggeration=0.5, cfg_weight=0.3, temperature=0.6, gentle=False)
-    sr, synth = audiobook.load_engine(args)
-    audio = synth("This is a test of the expressive voice.")
-    if len(audio) < sr:
-        raise RuntimeError(f"only {len(audio) / sr:.1f} s of audio")
-    return f"{len(audio) / sr:.1f} s of audio"
 
 
 def main(argv):
@@ -104,15 +86,12 @@ def main(argv):
     print(f"Audiobook Maker {version.VERSION}", flush=True)
     check("FFmpeg and ffprobe", ffmpeg, results)
     for module in ("customtkinter", "sounddevice", "soundfile", "PIL", "send2trash", "pypdf", "platformdirs",
-                   "num2words", "soxr", "huggingface_hub", "torch", "kokoro", "chatterbox.tts", "perth",
-                   "faster_whisper"):
+                   "huggingface_hub", "torch", "kokoro"):
         check(f"import {module}", lambda m=module: getattr(importlib.import_module(m), "__version__", ""), results)
     check("espeak-ng", espeak, results)
     check("Kokoro's English data (spaCy)", english_data, results)
     if "--narrate" in argv:
         check("narrate a short book with Kokoro", narrate, results)
-    if "--chatterbox" in argv:
-        check("narrate a sentence with Chatterbox", chatterbox, results)
     print("ALL OK" if all(results) else f"{results.count(False)} FAILED", flush=True)
     return 0 if all(results) else 1
 

@@ -8,10 +8,11 @@ from pathlib import Path
 
 import audiobook
 import book_settings
+import downloads
 import library
 import run_settings
 import tools
-from gui_common import CHATTERBOX, OFFLINE, TK_FINALIZERS, shorten, voice_info
+from gui_common import OFFLINE, TK_FINALIZERS, shorten, voice_info
 
 
 class Runner:
@@ -105,9 +106,9 @@ class Runner:
 
     def render_args(self, sample=False, redo=None, mp3=False, voice=None):
         """The settings audiobook.run narrates with, as chosen in the window (see run_settings.render_args)."""
-        choices = dict(folder=self.folder, engine=self.engine, voice_a=self.voice_a, voice_b=self.voice_b, clip=self.clip,
+        choices = dict(folder=self.folder, voice_a=self.voice_a, voice_b=self.voice_b,
                        title=self.book_title.get(), author=self.author.get(), cover=self.cover_path,
-                       check=self.check_switch.get(), gentle=book_settings.gentle(), cast=self.cast)
+                       gentle=book_settings.gentle(), cast=self.cast)
         choices.update({name: getattr(self, name).get() for name in run_settings.SLIDERS})
         return run_settings.render_args(choices, sample, redo, mp3, voice)
 
@@ -129,10 +130,6 @@ class Runner:
         if not files:
             self.notify(f"No chapter files (.md or .txt) found in {folder}/")
             return
-        ref = self.clip if self.engine == CHATTERBOX else None
-        if ref and not Path(ref).is_file():
-            self.notify(f"Voice clip not found: {ref}")
-            return
         if self.cover_path and not Path(self.cover_path).is_file():
             self.notify(f"Cover image not found: {self.cover_path}")
             return
@@ -147,10 +144,9 @@ class Runner:
             except OSError as e:
                 self.notify(f"Couldn't save this book's settings: {e}")
                 return
-        if args.engine == "chatterbox":
-            voice_label = f"Chatterbox ({Path(ref).name if ref else 'built-in voice'})"
-        else:
-            voice_label = " + ".join(voice_info(v.strip())[0] for v in args.voice.split(","))
+        voice_label = " + ".join(voice_info(v.strip())[0] for v in args.voice.split(","))
+        # A quick look at the files on disk: say a download is coming only when one really is.
+        self.will_download = downloads.needs_download(audiobook.LazyVoice(args).needed_files())
         self.previewing = voice
         self.pending_preview = self.preview_key(args) if sample else None
         self.save_book()
@@ -167,7 +163,8 @@ class Runner:
         elif redo:
             self._append(f"Narrating chapter {', '.join(map(str, sorted(redo)))} again with {voice_label}…")
         else:
-            self._append(f"{'Previewing' if sample else 'Creating audiobook with'} {voice_label}… (first use downloads the model)")
+            note = " (first use downloads the model)" if self.will_download else ""
+            self._append(f"{'Previewing' if sample else 'Creating audiobook with'} {voice_label}…{note}")
         if sample:
             self.set_preview("busy")
             self.refresh_play_buttons()

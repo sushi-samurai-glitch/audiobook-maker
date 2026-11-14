@@ -130,7 +130,7 @@ class SettingsWindow(ctk.CTkToplevel):
               12, TEXT3, justify="left").grid(row=0, column=0, columnspan=2, sticky="w", padx=18, pady=(16, 4))
         self.rows = {}
         row = 1
-        for key in ("kokoro", "chatterbox", "whisper", "cache"):
+        for key in ("kokoro", *downloads.left_over(), "cache"):
             if row > 1:
                 ctk.CTkFrame(box, fg_color=LINE, height=1).grid(row=row, column=0, columnspan=2, sticky="ew", padx=18)
                 row += 1
@@ -140,7 +140,7 @@ class SettingsWindow(ctk.CTkToplevel):
             if key == "cache":
                 name, purpose = "Narration cache", "Every narrated paragraph, so changing a book doesn't narrate it again."
             else:
-                name, purpose = downloads.PACKS[key].name, downloads.PACKS[key].purpose
+                name, purpose = self.pack(key).name, self.pack(key).purpose
             label(frame, name, 13, TEXT, "bold").grid(row=0, column=0, sticky="w")
             label(frame, purpose, 12, TEXT3).grid(row=1, column=0, sticky="w")
             status = label(frame, "", 12, TEXT2)
@@ -196,6 +196,10 @@ class SettingsWindow(ctk.CTkToplevel):
 
     # ----- voices and storage
 
+    @staticmethod
+    def pack(key):
+        return downloads.PACKS.get(key) or downloads.LEFT_OVER[key]
+
     def refresh_voices(self):
         """Say what each voice pack and the narration cache take, and whether anything is left to download."""
         try:
@@ -208,6 +212,10 @@ class SettingsWindow(ctk.CTkToplevel):
             if key == "cache":
                 size = folder_size(NARRATION_CACHE)
                 status.configure(text=f"{downloads.human(size)} in {NARRATION_CACHE.resolve()}" if size else "Empty",
+                                 text_color=TEXT2)
+            elif key in downloads.LEFT_OVER:
+                size = downloads.size_on_disk(downloads.LEFT_OVER[key])
+                status.configure(text=f"Not needed any more · {downloads.human(size)}" if size else "Deleted",
                                  text_color=TEXT2)
             elif sizes is None:
                 size = 0
@@ -281,6 +289,8 @@ class SettingsWindow(ctk.CTkToplevel):
         if key == "cache":
             what, after = "the narration cache", ("Finished audiobooks are kept, but changing one (a new cover, a "
                                                   "redone chapter) narrates the whole book again.")
+        elif key in downloads.LEFT_OVER:
+            what, after = downloads.LEFT_OVER[key].name, "The app doesn't use it any more, so it isn't downloaded again."
         else:
             what, after = downloads.PACKS[key].name, "They download again the next time you use them."
         if not messagebox.askyesno(f"Delete {what}?", after, icon="warning", default="no", parent=self):
@@ -290,7 +300,7 @@ class SettingsWindow(ctk.CTkToplevel):
         if key == "cache":
             shutil.rmtree(NARRATION_CACHE, ignore_errors=True)
         else:
-            downloads.delete(downloads.PACKS[key])
+            downloads.delete(self.pack(key))
         self.refresh_voices()
 
     # ----- about

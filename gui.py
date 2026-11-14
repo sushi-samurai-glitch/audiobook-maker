@@ -1,7 +1,7 @@
 """Desktop app for audiobook.py: pick a chapters folder, a voice and its settings, then preview or build the .m4b."""
 import os
 
-os.environ.setdefault("TQDM_DISABLE", "1")  # Chatterbox's progress bars would fill app.log, which no one watches
+os.environ.setdefault("TQDM_DISABLE", "1")  # download progress bars would fill app.log, which no one watches
 os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")  # no usage reports to Hugging Face: the app doesn't track anyone
 import queue
 import sys
@@ -15,12 +15,13 @@ import customtkinter as ctk
 import book_settings
 from awake import KeepAwake
 import desktop
+import downloads
 import library
 import paths
 import updates
 from book_step import BookStep
 from create_step import CreateStep
-from gui_common import HOW_IT_WORKS, KOKORO, STEP_KEYS, STEPS, shorten
+from gui_common import HOW_IT_WORKS, STEP_KEYS, STEPS, shorten
 from help_window import HelpWindow
 from library_actions import LibraryActions
 from library_pane import CONTENT_MIN_WIDTH, MIN_HEIGHT, NARROW
@@ -72,9 +73,7 @@ class App(BookStep, VoiceStep, SoundStep, CreateStep, LibraryActions, Runner, ct
 
         self.folder = ""
         self.current_book = None  # library key of the book shown: its chapters folder, or an .m4b found in out/
-        self.engine = KOKORO
         self.voice_a, self.voice_b, self.slot = "am_michael", None, "a"  # slot: which one a voice click sets
-        self.clip = None  # path of the Chatterbox voice clip; None means the built-in voice
         self.cover_path = None  # cover image embedded in the .m4b; None means no cover
         self.cast = {"enabled": False, "dialogue": None, "voices": {}}  # character voices; see CastWindow
         self.cast_window = None
@@ -96,6 +95,9 @@ class App(BookStep, VoiceStep, SoundStep, CreateStep, LibraryActions, Runner, ct
         # Tk timers created from the worker thread never fire on macOS, so the worker posts
         # messages here and the main thread polls for them.
         self.messages = queue.Queue()
+        # Which voice models are already on disk: a quick look at the cache files, nothing loaded, nothing online.
+        # Download notes are shown only for what's really missing.
+        self.models = downloads.scan()
 
         self.body = ctk.CTkFrame(self, fg_color="transparent")
         self.body.grid(row=1, column=1, sticky="nsew", padx=36, pady=(28, 20))
@@ -116,7 +118,7 @@ class App(BookStep, VoiceStep, SoundStep, CreateStep, LibraryActions, Runner, ct
         self.refresh_cast()
         self.bind("<FocusIn>", self.refresh_pronunciations, add="+")  # pick up edits saved in the text editor
         self.bind("<FocusIn>", self.refresh_gentle, add="+")  # Settings also calls refresh_gentle as soon as the switch flips
-        self.set_engine(KOKORO)
+        self.set_preview("idle")
         self.show_view("setup")
         self.refresh_voices()
         # Reopen the last book, with the voice and settings it was saved with.
@@ -305,8 +307,9 @@ class App(BookStep, VoiceStep, SoundStep, CreateStep, LibraryActions, Runner, ct
             label(box, number, 13, AMBER, "bold").pack(anchor="w", padx=14, pady=(12, 0))
             label(box, title, 13, TEXT, "bold").pack(anchor="w", padx=14)
             label(box, text, 13, TEXT3).pack(anchor="w", padx=14, pady=(0, 12))
-        label(inner, "Voices download once, the first time you use them. After that, no internet is needed.", 12,
-              TEXT3).pack(pady=(24, 0))
+        if not all(self.models.values()):
+            label(inner, "Voices download once, the first time you use them. After that, no internet is needed.", 12,
+                  TEXT3).pack(pady=(24, 0))
 
     def build_banner(self):
         """A problem with the last preview or audiobook, shown above the step instead of in a pop-up."""
@@ -333,7 +336,7 @@ class App(BookStep, VoiceStep, SoundStep, CreateStep, LibraryActions, Runner, ct
         self.setup.grid_rowconfigure(1, weight=1)
         self.build_banner()
         self.previews = []  # the preview boxes on the Voice and Sound steps; set_preview updates both
-        self.extra_cards = []  # blending and character voices, shown only for Kokoro
+        self.extra_cards = []  # the blending and character voice cards
         self.pages = {}
         for key, build in (("book", self.build_book), ("voice", self.build_voice), ("sound", self.build_sound),
                            ("create", self.build_create)):

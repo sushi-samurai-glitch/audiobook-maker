@@ -82,7 +82,7 @@ def run_cast(tmp_path, monkeypatch, chapters, cast_config, voice="am_michael"):
         return np.zeros(240, dtype=np.float32)
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(audiobook, "load_engine", lambda args: (24000, synth))
+    monkeypatch.setattr(audiobook, "load_engine", lambda args, **_: (24000, synth))
     monkeypatch.setattr(audiobook, "build_m4b", lambda chapters, wavs, args, progress=None: Path("out/Book.m4b"))
     monkeypatch.setattr(audiobook, "level_chapter", lambda wav, out: wav)
     args = SimpleNamespace(chapters=str(folder), engine="kokoro", voice=voice, speed=1.0, ref=None,
@@ -134,11 +134,6 @@ def test_switching_back_and_forth_keeps_both_sets_of_renders(tmp_path, monkeypat
     run_cast(tmp_path, monkeypatch, CHAPTER, config)
     assert run_cast(tmp_path, monkeypatch, CHAPTER, None) == []
     assert run_cast(tmp_path, monkeypatch, CHAPTER, config) == []
-
-
-def test_chatterbox_ignores_character_voices():
-    args = SimpleNamespace(engine="chatterbox", voice="Chatterbox", cast={"enabled": True, "dialogue": "af_heart"})
-    assert audiobook.cast_voices(args) is None
 
 
 def test_scan_cast_counts_lines_and_writes_who_said_what(tmp_path):

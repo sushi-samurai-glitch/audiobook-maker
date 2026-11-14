@@ -11,6 +11,9 @@ import audiobook  # noqa: E402
 import downloads  # noqa: E402
 
 SIZE = 1000
+# A pack with a few plain files, standing in for any model (Kokoro's .pt voices download differently, see fake_hub).
+SMALL = downloads.Pack("small", "Small model", "test/small", ("config.json", "model.bin", "tokenizer.json",
+                                                              "vocabulary.txt"), "about 4 KB", "For the tests.")
 
 
 def put_in_cache(cache, repo, filename, data=b"x" * SIZE):
@@ -54,24 +57,25 @@ def fake_hub(tmp_path, monkeypatch):
     monkeypatch.setattr(hub, "try_to_load_from_cache", lambda repo, f, cache_dir=None, **kw: original(
         repo, f, cache_dir=cache_dir or cache))
     monkeypatch.setattr(downloads, "cache_dir", lambda: cache)
+    monkeypatch.setitem(downloads.PACKS, "small", SMALL)
     return SimpleNamespace(cache=cache, calls=calls)
 
 
 def test_missing_and_size_on_disk(fake_hub):
-    pack = downloads.PACKS["chatterbox"]
+    pack = SMALL
     assert downloads.missing(pack) == list(pack.files)
-    put_in_cache(fake_hub.cache, pack.repo, "conds.pt")
-    assert "conds.pt" not in downloads.missing(pack)
+    put_in_cache(fake_hub.cache, pack.repo, "model.bin")
+    assert "model.bin" not in downloads.missing(pack)
     assert downloads.size_on_disk(pack) == SIZE
     downloads.delete(pack)
     assert downloads.size_on_disk(pack) == 0 and len(downloads.missing(pack)) == len(pack.files)
 
 
 def test_fetch_downloads_only_what_is_missing_and_reports_bytes(fake_hub):
-    pack = downloads.PACKS["whisper"]
+    pack = SMALL
     put_in_cache(fake_hub.cache, pack.repo, "config.json")
     seen = []
-    downloads.fetch(["whisper"], lambda done, total, name: seen.append((done, total)))
+    downloads.fetch(["small"], lambda done, total, name: seen.append((done, total)))
     assert [f for _, f in fake_hub.calls] == ["model.bin", "tokenizer.json", "vocabulary.txt"]
     total = 3 * SIZE
     assert all(t == total for _, t in seen) and seen[-1] == (total, total)
@@ -116,7 +120,7 @@ def test_cancel_stops_waiting_for_a_slow_file(fake_hub, monkeypatch):
     threading.Timer(0.3, cancel.set).start()
     start = time.monotonic()
     with pytest.raises(downloads.Cancelled):
-        downloads.fetch(["chatterbox"], None, cancel)
+        downloads.fetch(["small"], None, cancel)
     assert time.monotonic() - start < 2
 
 
@@ -128,8 +132,8 @@ def test_fetch_can_be_cancelled(fake_hub):
             cancel.set()
 
     with pytest.raises(downloads.Cancelled):
-        downloads.fetch(["chatterbox"], progress, cancel)
-    assert len(fake_hub.calls) < len(downloads.PACKS["chatterbox"].files)
+        downloads.fetch(["small"], progress, cancel)
+    assert len(fake_hub.calls) < len(SMALL.files)
 
 
 def test_human_sizes():
@@ -150,3 +154,12 @@ def test_a_run_downloads_only_the_voices_it_uses(fake_hub):
     fake_hub.calls.clear()
     voice.download()  # everything is here now
     assert fake_hub.calls == []
+
+
+def test_old_models_are_offered_for_deleting_only_while_on_disk(tmp_path):
+    assert downloads.left_over(tmp_path) == {}
+    put_in_cache(tmp_path, "ResembleAI/chatterbox", "t3_cfg.safetensors")
+    assert list(downloads.left_over(tmp_path)) == ["chatterbox"]
+    assert downloads.size_on_disk(downloads.LEFT_OVER["chatterbox"], tmp_path) == SIZE
+    downloads.delete(downloads.LEFT_OVER["chatterbox"], tmp_path)
+    assert downloads.left_over(tmp_path) == {}

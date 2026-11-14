@@ -4,7 +4,7 @@
 2. The first time, macOS blocks it because it isn't signed with a paid Apple developer account. Open **System
    Settings → Privacy & Security**, scroll to Security and click **Open Anyway** next to Audiobook Maker. After
    that it opens normally.
-3. Voices download the first time you use them (Kokoro about 330 MB, Chatterbox about 3 GB). **Settings → Download
+3. Voices download the first time you use them (about 330 MB). **Settings → Download
    all voices** fetches them all at once.
 
 This is a beta. If something goes wrong, open Settings, click **Copy details** and paste them into an issue.
