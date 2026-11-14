@@ -1,4 +1,4 @@
-"""The Sound step: speed, pauses, Chatterbox settings and character voices.
+"""The Sound step: speed, pauses, blending and character voices.
 
 A part of the main window (gui.App); self is the App."""
 from pathlib import Path
@@ -7,7 +7,7 @@ from tkinter import Canvas
 import customtkinter as ctk
 
 from cast_window import CastWindow
-from gui_common import KOKORO, KOKORO_VOICES, RECOMMENDED, voice_info
+from gui_common import KOKORO_VOICES, RECOMMENDED, voice_info
 from theme import AMBER, DISABLED, FIELD, FIELD_LINE, LABEL, TEXT, TEXT2, TEXT3, F, button, card, label
 
 
@@ -26,18 +26,11 @@ class SoundStep:
         pacing.grid(row=1, column=0, sticky="ew")
         pacing.grid_columnconfigure(0, weight=1)
         ctk.CTkFrame(pacing, fg_color="transparent", height=6).grid(row=0, column=0)
-        # Only the settings for the selected engine are shown; see set_engine.
-        self.kokoro_sliders = ctk.CTkFrame(pacing, fg_color="transparent")
-        row, self.speed = self.slider(self.kokoro_sliders, "Speed", "How fast the voice reads. 1.00 is natural.", 0.5, 2.0,
+        speed = ctk.CTkFrame(pacing, fg_color="transparent")
+        speed.grid(row=1, column=0, sticky="ew", padx=20)
+        row, self.speed = self.slider(speed, "Speed", "How fast the voice reads. 1.00 is natural.", 0.5, 2.0,
                                       RECOMMENDED["speed"])
         row.pack(fill="x", pady=(10, 10))
-        self.chatterbox_sliders = ctk.CTkFrame(pacing, fg_color="transparent")
-        row, self.exaggeration = self.slider(self.chatterbox_sliders, "Exaggeration", "Flat to dramatic.", 0.25, 2.0, RECOMMENDED["exaggeration"])
-        row.pack(fill="x", pady=(10, 10))
-        row, self.cfg_weight = self.slider(self.chatterbox_sliders, "Pacing", "Lower reads slower.", 0.0, 1.0, RECOMMENDED["cfg_weight"])
-        row.pack(fill="x", pady=(0, 10))
-        row, self.temperature = self.slider(self.chatterbox_sliders, "Temperature", "Higher varies more.", 0.3, 1.5, RECOMMENDED["temperature"])
-        row.pack(fill="x", pady=(0, 10))
 
         pauses = ctk.CTkFrame(pacing, fg_color="transparent")
         pauses.grid(row=2, column=0, sticky="ew", padx=20)
@@ -78,13 +71,10 @@ class SoundStep:
         self.blend_remove = button(blend_buttons, "Remove", self.remove_b, "ghost", height=34, width=80)
         cast = card(aside)
         cast.grid(row=2, column=0, sticky="ew", pady=(12, 0))
-        self.extra_cards.append(cast)
         label(cast, "Character voices", 14, TEXT, "bold").pack(anchor="w", padx=18, pady=(16, 3))
         self.cast_status = label(cast, "", 13, TEXT2, justify="left", wraplength=260)
         self.cast_status.pack(anchor="w", padx=18)
         button(cast, "Set up cast…", self.open_cast, "secondary", height=34).pack(anchor="w", padx=18, pady=(10, 16))
-        self.extras_note = label(aside, "Blending and character voices work with Kokoro voices. Switch to Kokoro on "
-                                 "the Voice step to use them.", 13, TEXT2, justify="left", anchor="w", wraplength=280)
         self.build_preview(aside).grid(row=5, column=0, sticky="ew")
 
     def choose_blend(self):
@@ -109,7 +99,7 @@ class SoundStep:
         width = canvas.winfo_width()
         if width < 20:
             return
-        speed = self.speed.get() if self.engine == KOKORO else 1.0
+        speed = self.speed.get()
         parts = [("h", 1.6 / speed), ("g", self.title_pause.get()), ("p", 3 / speed), ("g", self.paragraph_pause.get()),
                  ("p", 3 / speed)]
         scale = width / sum(size for _, size in parts)
@@ -133,10 +123,11 @@ class SoundStep:
         self._append("Speed and pauses reset to the recommended values.")
 
     def refresh_cast(self):
-        if not self.cast.get("enabled"):
+        cast = self.cast
+        if not cast.get("enabled"):
             text = "Off. Give characters their own voices for dialogue."
         else:
-            count = len(self.cast.get("voices", {}))
+            count = len(cast.get("voices", {}))
             text = f"On. {count} character{'s' if count != 1 else ''} with their own voice."
         self.cast_status.configure(text=text)
         if hasattr(self, "step"):
@@ -149,6 +140,6 @@ class SoundStep:
         if self.cast_window and self.cast_window.winfo_exists():
             self.cast_window.lift()
             return
-        self.cast_window = CastWindow(self, sorted(KOKORO_VOICES), self.narrator_voice())
+        self.cast_window = CastWindow(self, sorted(KOKORO_VOICES))
         self.cast_window.lift()
         self.cast_window.focus()

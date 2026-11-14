@@ -1,8 +1,9 @@
 """The voice models the app downloads from Hugging Face: what they are, whether they're here, and fetching them.
 
-Kokoro, Chatterbox and Whisper (the skipped-word check) each download on first use into Hugging Face's cache
-folder. This module lets the app fetch them all ahead of time with a progress bar, say how much room they take,
-and delete them. Nothing here is imported until it's needed, so the app opens without huggingface_hub loaded."""
+Kokoro's model and voices download on first use into Hugging Face's cache folder. This module lets the app fetch
+them all ahead of time with a progress bar, say how much room they take, and delete them (and the models earlier
+versions downloaded, which are no longer used). Nothing here is imported until it's needed, so the app opens without huggingface_hub loaded."""
+import os
 import shutil
 import threading
 from dataclasses import dataclass
@@ -28,15 +29,60 @@ def kokoro_files(voices=KOKORO_VOICES):
 PACKS = {
     "kokoro": Pack("kokoro", "Kokoro voices", "hexgrad/Kokoro-82M", kokoro_files(), "about 330 MB",
                    f"All {len(KOKORO_VOICES)} Kokoro voices, so each one works offline."),
-    # The files ChatterboxTTS.from_pretrained fetches (chatterbox-tts 0.1.7).
-    "chatterbox": Pack("chatterbox", "Chatterbox", "ResembleAI/chatterbox",
-                       ("ve.safetensors", "t3_cfg.safetensors", "s3gen.safetensors", "tokenizer.json", "conds.pt"),
-                       "about 3 GB", "The expressive voice and voice cloning."),
-    # What faster-whisper's download_model fetches for "small.en" (see checker.WHISPER_MODEL).
-    "whisper": Pack("whisper", "Skipped-word check", "Systran/faster-whisper-small.en",
-                    ("config.json", "model.bin", "tokenizer.json", "vocabulary.txt"), "about 480 MB",
-                    "Whisper, which listens back to Chatterbox for skipped words."),
 }
+
+# Models earlier versions downloaded and this one no longer uses. Settings lists one only while it is still on disk,
+# so its room can be freed; nothing downloads them.
+LEFT_OVER = {
+    "chatterbox": Pack("chatterbox", "Chatterbox (no longer used)", "ResembleAI/chatterbox", (), "about 3 GB",
+                       "The slower voice from an earlier version. Delete it to free the room."),
+    "whisper": Pack("whisper", "Skipped-word check (no longer used)", "Systran/faster-whisper-small.en", (),
+                    "about 480 MB", "Whisper, which listened back to Chatterbox. Delete it to free the room."),
+}
+
+
+def left_over(cache=None):
+    """{key: pack} of the LEFT_OVER models still in the cache."""
+    return {key: pack for key, pack in LEFT_OVER.items() if repo_folder(pack, cache or hub_cache()).is_dir()}
+
+
+def hub_cache():
+    """Hugging Face's cache folder, worked out the way huggingface_hub does, without importing it (so it's instant)."""
+    for name in ("HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE"):
+        if os.environ.get(name):
+            return Path(os.environ[name]).expanduser()
+    if os.environ.get("HF_HOME"):
+        return Path(os.environ["HF_HOME"]).expanduser() / "hub"
+    base = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    return Path(base).expanduser() / "huggingface" / "hub"
+
+
+def on_disk(pack, files=None, cache=None):
+    """Whether every one of the pack's files (or `files`) is already in the cache. Only looks at files on disk:
+    nothing is loaded, nothing goes online, and huggingface_hub isn't imported, so it takes milliseconds."""
+    snapshots = repo_folder(pack, cache or hub_cache()) / "snapshots"
+    try:
+        revisions = [d for d in snapshots.iterdir() if d.is_dir()]
+    except OSError:
+        return False
+    wanted = files or pack.files
+    # A snapshot links each file to its blob; a broken link (a deleted blob) doesn't count as there.
+    return any(all((revision / f).is_file() for f in wanted) for revision in revisions)
+
+
+def scan(cache=None):
+    """{pack key: on disk?} for each pack (just Kokoro now). Kokoro counts as there with its model; each of its
+    voices is a small file that downloads the first time that voice is used."""
+    kokoro = PACKS["kokoro"].files[:2]  # config.json and the model
+    return {key: on_disk(pack, kokoro if key == "kokoro" else None, cache) for key, pack in PACKS.items()}
+
+
+def needs_download(needed, cache=None):
+    """Whether any of {pack key: files} (what a run needs, see audiobook.LazyVoice.needed_files) is missing."""
+    try:
+        return any(not on_disk(PACKS[key], files, cache) for key, files in needed.items())
+    except Exception:  # can't tell: say it may download rather than say nothing
+        return True
 
 
 class Cancelled(Exception):

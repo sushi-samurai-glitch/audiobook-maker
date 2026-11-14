@@ -17,16 +17,14 @@ hiddenimports = ["selfcheck", "downloads"]
 
 # Packages that load data files, native libraries or submodules PyInstaller can't see by reading imports.
 for package in ("kokoro", "misaki", "espeakng_loader", "en_core_web_sm", "phonemizer", "language_tags", "segments",
-                "csvw", "chatterbox", "perth", "s3tokenizer", "conformer", "faster_whisper", "ctranslate2",
-                "customtkinter", "num2words", "spacy", "thinc", "spacy_legacy", "spacy_loggers", "librosa"):
+                "csvw", "customtkinter", "num2words", "spacy", "thinc", "spacy_legacy", "spacy_loggers"):
     d, b, h = collect_all(package)
     datas, binaries, hiddenimports = datas + d, binaries + b, hiddenimports + h
 
 # Packages that read their own version (or another's) with importlib.metadata at import time.
-for dist in ("en_core_web_sm", "spacy", "thinc", "kokoro", "misaki", "chatterbox-tts", "resemble-perth", "torch",
-             "torchaudio", "transformers", "tokenizers", "huggingface_hub", "hf_xet", "safetensors", "tqdm", "regex",
-             "filelock", "numpy", "packaging", "requests", "pyyaml", "diffusers", "librosa", "faster-whisper",
-             "ctranslate2", "customtkinter", "soundfile", "sounddevice", "num2words", "setuptools"):
+for dist in ("en_core_web_sm", "spacy", "thinc", "kokoro", "misaki", "torch", "torchaudio", "transformers",
+             "tokenizers", "huggingface_hub", "hf_xet", "safetensors", "tqdm", "regex", "filelock", "numpy", "packaging",
+             "requests", "pyyaml", "customtkinter", "soundfile", "sounddevice", "num2words"):
     datas += copy_metadata(dist)
 
 a = Analysis(  # noqa: F821
@@ -35,7 +33,7 @@ a = Analysis(  # noqa: F821
     datas=datas,
     binaries=binaries,
     hiddenimports=hiddenimports,
-    # Installed alongside Chatterbox for its demo web page, which the app never uses.
+    # Big packages the app never uses, in case something in the build environment pulls them in.
     excludes=["gradio", "gradio_client", "fastapi", "uvicorn", "starlette", "pytest", "pre_commit", "virtualenv",
               "IPython", "matplotlib", "notebook"],
     noarchive=False,
@@ -62,7 +60,6 @@ app = BUNDLE(  # noqa: F821
         "CFBundleVersion": VERSION,
         "LSMinimumSystemVersion": "12.0",
         "NSHighResolutionCapable": True,
-        "NSMicrophoneUsageDescription": "Audiobook Maker records a short voice clip for Chatterbox to copy.",
         "NSHumanReadableCopyright": "Free software under the GNU GPL, version 3.",
     },
 )

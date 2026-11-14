@@ -10,9 +10,8 @@ VOICES = ["am_michael", "bm_george", "af_heart"]
 def test_round_trip(tmp_path):
     cover = tmp_path / "cover.jpg"
     cover.write_bytes(b"jpg")
-    settings = {"engine": "Kokoro", "voice_a": "bm_george", "voice_b": "af_heart", "clip": None, "speed": 0.9,
-                "exaggeration": 0.5, "cfg_weight": 0.3, "temperature": 0.6, "paragraph_pause": 0.8,
-                "title_pause": 1.5, "title": "The Night Watch", "author": "A. Writer", "cover": str(cover), "check": False}
+    settings = {"voice_a": "bm_george", "voice_b": "af_heart", "speed": 0.9, "paragraph_pause": 0.8,
+                "title_pause": 1.5, "title": "The Night Watch", "author": "A. Writer", "cover": str(cover)}
     save_book(tmp_path, settings)
     assert load_book(tmp_path, VOICES) == (settings, [])
 
@@ -35,8 +34,8 @@ def test_unknown_values_are_dropped():
 
 
 def test_numbers_are_clamped_and_rounded():
-    settings, _ = clean({"speed": 9, "temperature": 0.0, "paragraph_pause": 0.6000000001}, VOICES)
-    assert settings["speed"] == 2.0 and settings["temperature"] == 0.3 and settings["paragraph_pause"] == 0.6
+    settings, _ = clean({"speed": 9, "title_pause": -1, "paragraph_pause": 0.6000000001}, VOICES)
+    assert settings["speed"] == 2.0 and settings["title_pause"] == 0.0 and settings["paragraph_pause"] == 0.6
 
 
 def test_blend_voice_must_differ_from_main_voice():
@@ -44,10 +43,10 @@ def test_blend_voice_must_differ_from_main_voice():
     assert clean({"voice_a": "am_michael", "voice_b": "zz_nobody"}, VOICES)[0]["voice_b"] is None
 
 
-def test_missing_files_are_reported(tmp_path):
-    settings, problems = clean({"clip": str(tmp_path / "gone.wav"), "cover": str(tmp_path / "gone.jpg")}, VOICES)
-    assert settings["clip"] is None and settings["cover"] is None
-    assert len(problems) == 2 and "gone.wav" in problems[0]
+def test_missing_cover_is_reported(tmp_path):
+    settings, problems = clean({"cover": str(tmp_path / "gone.jpg")}, VOICES)
+    assert settings["cover"] is None
+    assert len(problems) == 1 and "gone.jpg" in problems[0]
 
 
 def test_saved_file_is_readable_json(tmp_path):
@@ -71,6 +70,25 @@ def test_cast_is_validated():
     data = {"cast": {"enabled": True, "dialogue": "zz_nobody", "voices": {"Mara": "bf_emma", "Kai": "af_heart"}}}
     settings, _ = clean(data, VOICES)
     assert settings["cast"] == {"enabled": True, "dialogue": None, "voices": {"Kai": "af_heart"}}
+
+
+CHATTERBOX_BOOK = {"engine": "Chatterbox", "voice_a": "bm_george", "clip": "/voices/Mark.wav", "check": True,
+                   "exaggeration": 0.5, "cfg_weight": 0.3, "temperature": 0.6, "speed": 0.9,
+                   "clip_cast": {"enabled": True, "dialogue": "built-in", "voices": {"Mara": "/voices/Mara.wav"}}}
+
+
+def test_a_book_set_up_with_chatterbox_opens_with_its_kokoro_voice(tmp_path):
+    (tmp_path / BOOK_FILE).write_text(json.dumps(CHATTERBOX_BOOK))
+    settings, problems = load_book(tmp_path, VOICES)
+    assert settings == {"voice_a": "bm_george", "voice_b": None, "speed": 0.9, "cover": None}
+    assert problems == []  # the clips aren't looked for, so nothing is said about them
+
+
+def test_saving_keeps_what_chatterbox_saved(tmp_path):
+    (tmp_path / BOOK_FILE).write_text(json.dumps({**CHATTERBOX_BOOK, "skip": ["03.md"]}))
+    save_book(tmp_path, {"voice_a": "am_michael", "speed": 1.0})
+    saved = json.loads((tmp_path / BOOK_FILE).read_text(encoding="utf-8"))
+    assert saved == {**CHATTERBOX_BOOK, "skip": ["03.md"], "voice_a": "am_michael", "speed": 1.0}
 
 
 def test_gentle_mode_is_on_until_turned_off(tmp_path, monkeypatch):
@@ -150,3 +168,9 @@ def test_chapter_text_in_any_common_encoding(tmp_path):
     for name, data in files.items():
         (tmp_path / name).write_bytes(data)
         assert book_settings.read_text(tmp_path / name) == text, name
+
+
+def test_the_apps_own_txt_files_are_never_chapters(tmp_path):
+    for name in ("01.md", "02.txt", "pronunciations.txt", "who said what.txt", "Who Said What.txt"):
+        (tmp_path / name).write_text("x", encoding="utf-8")
+    assert [f.name for f in book_settings.chapter_files(tmp_path)] == ["01.md", "02.txt"]

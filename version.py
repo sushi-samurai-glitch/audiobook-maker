@@ -48,7 +48,6 @@ def details():
         f"Python: {sys.version.split()[0]}",
         f"FFmpeg: {_ffmpeg()}",
         f"Kokoro: {_package('kokoro')}",
-        f"Chatterbox: {_package('chatterbox-tts')}",
         f"PyTorch: {_package('torch')}",
         f"Log file: {paths.log_file()}",
     ]

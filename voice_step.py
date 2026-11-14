@@ -1,8 +1,7 @@
-"""The Voice step: Kokoro voice cards and blending, Chatterbox clips, and voice previews.
+"""The Voice step: Kokoro voice cards and blending, and voice previews.
 
 A part of the main window (gui.App); self is the App."""
 from pathlib import Path
-from tkinter import filedialog
 
 import customtkinter as ctk
 
@@ -10,16 +9,11 @@ from gui_common import (
     ACCENT_CHOICES,
     ACCENTS,
     COVER_BG,
-    ENGINE_LABELS,
     GENDER_CHOICES,
-    KOKORO,
     KOKORO_VOICES,
     PREVIEW_HINT,
-    clip_length,
-    shorten,
     voice_info,
 )
-from record_dialog import RecordDialog
 from theme import (
     AMBER,
     AMBER_DARK,
@@ -28,15 +22,8 @@ from theme import (
     AMBER_SOFT,
     CARD,
     CARD_LINE,
-    FIELD,
-    FIELD_LINE,
-    KNOB,
-    KNOB_HOVER,
-    LABEL,
     LINE,
-    MONO,
     RAISED,
-    SEGMENTS,
     TEXT,
     TEXT2,
     TEXT3,
@@ -55,23 +42,11 @@ class VoiceStep:
         main = ctk.CTkFrame(page, fg_color="transparent")
         main.grid(row=0, column=0, sticky="nsew", padx=(0, 28))
         main.grid_columnconfigure(0, weight=1)
-        main.grid_rowconfigure(2, weight=1)
+        main.grid_rowconfigure(1, weight=1)
         self.page_heading(main, "Who should read your book?", "Press play on any voice to hear it read your first "
                           "chapter. Click a voice to choose it.").grid(row=0, column=0, sticky="ew", pady=(0, 16))
-        engines = ctk.CTkFrame(main, fg_color="transparent")
-        engines.grid(row=1, column=0, sticky="ew", pady=(0, 12))
-        engine_of = {text: engine for engine, text in ENGINE_LABELS.items()}
-        self.engine_toggle = ctk.CTkSegmentedButton(engines, values=list(ENGINE_LABELS.values()), height=38,
-                                                    command=lambda text: self.set_engine(engine_of[text]),
-                                                    font=F(13, "bold"), **SEGMENTS)
-        self.engine_toggle.pack(side="left")
-
-        panels = ctk.CTkFrame(main, fg_color="transparent")
-        panels.grid(row=2, column=0, sticky="nsew")
-        panels.grid_columnconfigure(0, weight=1)
-        panels.grid_rowconfigure(0, weight=1)
-        self.build_kokoro_panel(panels)
-        self.build_chatterbox_panel(panels)
+        self.build_kokoro_panel(main)
+        self.kokoro_panel.grid(row=1, column=0, sticky="nsew")
 
         aside = ctk.CTkFrame(page, fg_color="transparent", width=280)
         aside.grid(row=0, column=1, sticky="ns")
@@ -169,36 +144,6 @@ class VoiceStep:
         play.grid(row=0, column=0, padx=(12, 0))
         return dict(frame=frame, badge=badge, play=play)
 
-    def build_chatterbox_panel(self, parent):
-        panel = ctk.CTkFrame(parent, fg_color="transparent")
-        self.chatterbox_panel = panel
-        panel.grid_columnconfigure(0, weight=1)
-        panel.grid_rowconfigure(1, weight=1)
-        head = ctk.CTkFrame(panel, fg_color="transparent")
-        head.grid(row=0, column=0, sticky="w")
-        label(head, "Voice clip", 13, LABEL, "bold").pack(anchor="w")
-        label(head, "Optional. Without a clip, Chatterbox uses its built-in voice. Only copy your own voice, or the "
-              "voice of someone who has agreed to it.", 12, TEXT3, justify="left", wraplength=520).pack(anchor="w", pady=(2, 0))
-        self.clip_list = ctk.CTkScrollableFrame(panel, fg_color="transparent", height=120)
-        self.clip_list.grid(row=1, column=0, sticky="nsew", pady=(10, 10))
-        self.clip_list.grid_columnconfigure(0, weight=1)
-        buttons = ctk.CTkFrame(panel, fg_color="transparent")
-        buttons.grid(row=2, column=0, sticky="ew")
-        buttons.grid_columnconfigure((0, 1), weight=1, uniform="clip")
-        button(buttons, "Browse…", self.pick_ref, "secondary", height=44, font=F(14, "bold")).grid(row=0, column=0, sticky="ew", padx=(0, 5))
-        button(buttons, "Record…", self.record, "secondary", height=44, font=F(14, "bold")).grid(row=0, column=1, sticky="ew", padx=(5, 0))
-        check = ctk.CTkFrame(panel, fg_color="transparent")
-        check.grid(row=3, column=0, sticky="ew", pady=(12, 0))
-        check.grid_columnconfigure(0, weight=1)
-        texts = ctk.CTkFrame(check, fg_color="transparent")
-        texts.grid(row=0, column=0, sticky="w")
-        label(texts, "Check for skipped words", 13, LABEL, "bold").pack(anchor="w")
-        label(texts, "Retries a paragraph if Whisper hears words missing.", 12, TEXT3).pack(anchor="w")
-        self.check_switch = ctk.CTkSwitch(check, text="", width=46, progress_color=AMBER, button_color=KNOB,
-                                          button_hover_color=KNOB_HOVER, fg_color=TRACK)
-        self.check_switch.select()
-        self.check_switch.grid(row=0, column=1, sticky="e")
-
     def build_preview(self, parent):
         """A preview box; there is one on the Voice step and one on the Sound step."""
         panel = card(parent)
@@ -211,20 +156,6 @@ class VoiceStep:
         bar = ctk.CTkProgressBar(panel, mode="indeterminate", height=4, progress_color=AMBER, fg_color=TRACK)
         self.previews.append(dict(btn=btn, text=text, again=again, bar=bar))
         return panel
-
-    def set_engine(self, engine):
-        self.engine = engine
-        self.engine_toggle.set(ENGINE_LABELS[engine])
-        kokoro = engine == KOKORO
-        for frame, shown in ((self.kokoro_panel, kokoro), (self.chatterbox_panel, not kokoro)):
-            frame.grid(row=0, column=0, sticky="nsew") if shown else frame.grid_remove()
-        for frame, shown in ((self.kokoro_sliders, kokoro), (self.chatterbox_sliders, not kokoro)):
-            frame.grid(row=1, column=0, sticky="ew", padx=20) if shown else frame.grid_remove()
-        self.refresh_clips()
-        self.set_preview("idle")
-        self.draw_rhythm()
-        if hasattr(self, "step"):
-            self.refresh_summary()
 
     def narrator_voice(self):
         return f"{self.voice_a}, {self.voice_b}" if self.voice_b else self.voice_a
@@ -286,54 +217,6 @@ class VoiceStep:
         if hasattr(self, "step"):
             self.refresh_summary()
 
-    def refresh_clips(self):
-        for row in self.clip_list.winfo_children():
-            row.destroy()
-        saved = sorted(Path("voices").glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True) if Path("voices").is_dir() else []
-        paths = [str(p.resolve()) for p in saved]
-        if self.clip and self.clip not in paths:
-            paths.insert(0, self.clip)  # a clip chosen with Browse… from elsewhere
-        rows = [(None, "Built-in voice", "Default · no clip needed")]
-        rows += [(p, Path(p).name, f"Reference clip · {clip_length(p)}") for p in paths]
-        for i, (path, name, meta) in enumerate(rows):
-            selected = path == self.clip
-            frame = ctk.CTkFrame(self.clip_list, height=58, corner_radius=12, border_width=1, fg_color=AMBER_SOFT if selected else FIELD,
-                                 border_color=AMBER if selected else FIELD_LINE)
-            frame.grid(row=i, column=0, sticky="ew", padx=2, pady=3)
-            frame.grid_propagate(False)
-            frame.grid_columnconfigure(0, weight=1)
-            frame.grid_rowconfigure(0, weight=1)
-            texts = ctk.CTkFrame(frame, fg_color="transparent")
-            texts.grid(row=0, column=0, sticky="w", padx=(14, 4), pady=4)
-            label(texts, shorten(name, 40), 13, TEXT, "bold", family=MONO if path else None).pack(anchor="w")
-            label(texts, meta, 12, TEXT3).pack(anchor="w")
-            label(frame, "✓" if selected else "", 16, AMBER, "bold", width=24).grid(row=0, column=1, padx=(0, 12), pady=4)
-            on_click(frame, lambda p=path: self.choose_clip(p))
-            if path:  # hear the clip itself; added after on_click so it doesn't also choose it
-                button(frame, "▶", lambda p=path, n=name: self.player_bar.open(p, n, resume=False), "secondary",
-                       width=34, height=34, corner_radius=17, border_width=0, font=F(12)).grid(row=0, column=2, padx=(0, 10))
-
-    def choose_clip(self, path):
-        self.clip = path
-        self.refresh_clips()
-        self.set_preview("idle")
-        self.refresh_summary()
-
-    def pick_ref(self):
-        clip = filedialog.askopenfilename(title="Voice clip to copy (about 10 seconds of clean speech)",
-                                          filetypes=[("Audio", "*.wav *.mp3 *.flac *.m4a"), ("All files", "*")])
-        if clip:
-            self.choose_clip(clip)
-
-    def record(self):
-        dialog = RecordDialog(self)
-        self.wait_window(dialog)
-        if dialog.result:
-            self.choose_clip(str(dialog.result.resolve()))
-            self._append(f"Saved {dialog.result} ({dialog.seconds:.0f}s). Click Preview to hear Chatterbox read with it.")
-        elif dialog.captured:
-            self._append("Recording discarded.")
-
     def set_preview(self, state, path=None):
         if state == "ready":
             self.sample_path = str(path)
@@ -342,7 +225,8 @@ class VoiceStep:
             preview["bar"].grid_remove()
             preview["again"].grid_remove()
             if state == "busy":
-                preview["text"].configure(text="Making a sample… the first time, the voice has to download.")
+                note = " the first time, the voice has to download." if getattr(self, "will_download", True) else ""
+                preview["text"].configure(text=f"Making a sample…{note}")
                 preview["bar"].grid(row=1, column=0, columnspan=2, sticky="ew", padx=14, pady=(0, 14))
                 preview["bar"].start()
             elif state == "ready":

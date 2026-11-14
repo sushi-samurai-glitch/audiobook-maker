@@ -175,7 +175,7 @@ def fake_run(tmp_path, monkeypatch, chapters, rules=None, **overrides):
         return audiobook.np.zeros(240, dtype=audiobook.np.float32)
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(audiobook, "load_engine", lambda args: (24000, synth))
+    monkeypatch.setattr(audiobook, "load_engine", lambda args, **_: (24000, synth))
     monkeypatch.setattr(audiobook, "build_m4b", lambda chapters, wavs, args, progress=None: Path("out/book.m4b"))
     args = SimpleNamespace(chapters=str(folder), engine="kokoro", voice="am_michael", speed=1.0, ref=None,
                            paragraph_pause=P, title_pause=T, scene_pause=S, sample=False, title="Book",
@@ -236,7 +236,7 @@ def test_cancelled_chapter_keeps_finished_paragraphs(tmp_path, monkeypatch):
     cancel = threading.Event()
     real_synth = []
 
-    def stop_after_two(args):
+    def stop_after_two(args, **_):
         def synth(text):
             real_synth.append(text)
             if len(real_synth) == 2:
@@ -365,7 +365,7 @@ def test_a_voice_not_downloaded_gets_a_plain_message(monkeypatch):
         except ConnectionError as e:
             raise LocalEntryNotFoundError("cannot find the requested files in the local cache") from e
 
-    monkeypatch.setattr(audiobook, "load_engine", lambda args: (24000, synth))
+    monkeypatch.setattr(audiobook, "load_engine", lambda args, **_: (24000, synth))
     voice = audiobook.LazyVoice(SimpleNamespace(engine="kokoro", voice="am_michael"))
     try:
         voice("Hello.", "am_eric")
@@ -379,7 +379,7 @@ def test_other_errors_are_not_reworded(monkeypatch):
     def synth(text, voice=None):
         raise ValueError("bad text")
 
-    monkeypatch.setattr(audiobook, "load_engine", lambda args: (24000, synth))
+    monkeypatch.setattr(audiobook, "load_engine", lambda args, **_: (24000, synth))
     try:
         audiobook.LazyVoice(SimpleNamespace(engine="kokoro", voice="am_michael"))("Hello.")
     except ValueError:
@@ -429,7 +429,6 @@ def test_knows_whether_a_voice_model_is_downloaded(tmp_path):
     assert not audiobook.model_downloaded("kokoro", tmp_path)
     (tmp_path / "models--hexgrad--Kokoro-82M" / "snapshots" / "abc").mkdir(parents=True)
     assert audiobook.model_downloaded("kokoro", tmp_path)
-    assert not audiobook.model_downloaded("chatterbox", tmp_path)
 
 
 def test_bom_does_not_hide_the_chapter_title(tmp_path):

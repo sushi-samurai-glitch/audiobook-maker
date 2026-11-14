@@ -11,14 +11,14 @@ Setting up a book takes four steps, shown in the bar at the top: Book, Voice, So
 
 ### Steps
 1. Book: click New book, then Choose a book… (or Browse… in the Book section). Select the chapter .md files to narrate: press ⌘A to select them all, or ⌘-click to pick only some. Chapters you leave out are skipped, and the files stay where they are. Or select one EPUB, Word or PDF book to import it. The app lists the chapters it found. Type the Title and Author on the right; if Title is empty, the folder name is used. To give the book cover art in Books, click Choose… under Cover.
-2. Voice: pick Kokoro or Chatterbox, then a voice. Michael is the default. Click Preview to hear the opening of chapter 1.
+2. Voice: pick a voice. Michael is the default. Click Preview to hear the opening of chapter 1.
 3. Sound: adjust the speed and pauses if you like, and preview again. The recommended settings suit most books.
 4. Create: check the summary, then click Create audiobook. A progress screen shows each chapter as it finishes. After the last chapter it levels the volume and builds the audiobook file, and that is counted in the percentage too, so 100% means the book is ready to play. Click Cancel to stop; finished chapters and paragraphs are kept. The line at the bottom is the latest log message: click it to open the full log, and click it again to close it. The log folds away by itself when the audiobook is ready.
 5. When it finishes, the app shows the finished book. The .m4b is saved in your audiobooks folder; click Show in Finder to see it. (That's Music › Audiobook Maker, or the out folder inside the app's folder if you have used it since before that change.)
 
 ### Tips
 - On the Voice step, press ▶ on any voice card to hear it read the opening of chapter 1 without choosing it. Click the card to choose it.
-- Kokoro renders an 18-minute chapter in about a minute. Chatterbox takes roughly an hour for the same chapter.
+- Kokoro renders an 18-minute chapter in about a minute.
 - Keep the app open while it renders. The Mac won't go to sleep on its own while an audiobook is being made, but closing a laptop's lid still puts it to sleep, so leave the lid open. If it stops partway, click Create audiobook again: finished chapters are skipped, and a half-finished chapter carries on from the paragraph where it stopped.
 - Help and Settings are at the bottom of the library pane.
 - A book you set up before opens on the Create step, with everything you chose. Click a row in the summary to change it.
@@ -176,11 +176,11 @@ Blending mixes two Kokoro voices into one new voice, like mixing two paint color
 Read dialogue in different voices: one per character if you like, with the narrator reading everything else. It's optional; with it off, the whole book is read in one voice.
 
 ### Steps
-1. Choose Kokoro and pick the narrator's voice as usual (and a blend if you like).
+1. On the Voice step, pick the narrator's voice as usual.
 2. On the Sound step, under Character voices, click Set up cast…
 3. Turn on the switch at the top right of the Character voices window.
 4. Pick an Other dialogue voice. It reads characters without their own voice, and lines whose speaker couldn't be worked out. Leave it on Narrator's voice to read those in the narrator's voice.
-5. In the list of characters found in the book, pick a voice for each one you want to stand out.
+5. In the list of characters found in the book, pick a voice for each one you want to stand out. Each voice goes to one character: once picked, it leaves the other characters' lists (the narrator's voice can be shared).
 6. Click Done, then Preview to hear chapter 1 with the cast.
 
 ### How speakers are found
@@ -197,57 +197,10 @@ Read dialogue in different voices: one per character if you like, with the narra
 - Click Who said what in the Cast window for a list of every line of dialogue and who it went to, chapter by chapter. It opens in TextEdit.
 
 ### Tips
-- Character voices work with Kokoro only.
 - Changing one character's voice only narrates that character's lines again.
 - Character-voice and one-voice renders are kept separately, so switching between them doesn't narrate anything again once both have been made.
 - The same person can appear twice in the list, for example Bren and Old Bren. Give both the same voice.
 - The cast is saved with the book.
-
-## Chatterbox
-Chatterbox sounds more expressive than Kokoro and can copy any voice from a short clip. It is much slower, and it occasionally skips or garbles a sentence.
-
-### Steps
-1. Click Chatterbox at the top of the Voice section.
-2. For the voice, leave Built-in voice selected, click a saved clip in the list, click Browse… to choose a clip, or click Record… to record one (see Recording a voice).
-3. Click Preview. It takes a minute or two.
-4. Read along with the text while the sample plays and listen for skipped words. If you hear any, lower Temperature and preview again.
-5. Click Create audiobook. Leave the Mac plugged in: a whole book can take many hours.
-
-### Checking for skipped words
-- With Check for skipped words turned on (below the voice clips), a speech-to-text model called Whisper listens to each paragraph as soon as Chatterbox narrates it and compares what it hears with the text.
-- If words are missing, or extra words were added, the paragraph is narrated again, up to 3 tries in all. The best try is kept, and the log says what happened.
-- Paragraphs that are still wrong after 3 tries are listed in a check report, a text file in your audiobooks folder named after the book. It shows the text and what Whisper heard. Listen to those spots, and click Redo on the chapter if you want a new take.
-- The report covers the whole book, not just the last run. A paragraph leaves it when it is narrated again and passes.
-- A name Whisper hears a little differently, or a word respelled in Pronunciations, doesn't count as a mistake.
-- Only paragraphs narrated with the check turned on are checked. Chapters made earlier aren't checked until they are narrated again.
-- The check needs faster-whisper. If the log says to install it, open Terminal in the project folder and run: uv pip install --python .venv/bin/python faster-whisper
-- The first check downloads Whisper, about 480 MB. Checking adds a few seconds per paragraph, which is small next to Chatterbox's own time.
-- Kokoro doesn't skip words, so Kokoro books are never checked.
-
-### Tips
-- The first use downloads the model, about 3 GB. The Creating screen shows how far along it is. To download it ahead of time, use Download all voices in Settings (see Voices and storage).
-- Each run comes out slightly different, even with the same settings.
-- Chatterbox marks everything it makes with an inaudible watermark (Resemble AI's Perth). You can't hear it, but software can detect that the audio was made by AI. Kokoro adds no watermark.
-- If it stops partway, click Create audiobook again. Finished chapters, and the finished paragraphs of the chapter it was on, are kept.
-- To get a new take of one chapter, click Redo next to it in the chapter list.
-
-## Recording a voice
-Record a short clip of a voice for Chatterbox to copy, such as your own narrator voice.
-
-### Steps
-1. Click Chatterbox at the top of the Voice section.
-2. Click Record…, then Start recording. The timer counts down from 12 seconds.
-3. Start reading right away. The passage to read is shown in the window, and the bar under the timer moves as the microphone hears you.
-4. Recording stops after 12 seconds, or click Stop to end it early. At least 5 seconds of speech is needed.
-5. Type a name for the voice and click Save voice. If the name is already taken, click Replace voice to overwrite it, or type another name. Cancel throws the new recording away.
-6. The new recording is added to the Voice clip list and selected. Click Preview to hear Chatterbox read with it.
-
-### Tips
-- Record in a quiet room, about a hand's width from the microphone.
-- Read at the pace and in the tone you want for the book. Chatterbox copies both.
-- Chatterbox only uses the first 10 seconds. The silence before and after your speech is trimmed automatically.
-- Recordings are saved in the voices folder. To reuse one later, click it in the Voice clip list (saved voices appear there), or click Browse… to pick any audio file.
-- The first time, macOS asks to let Audiobook Maker use the microphone. Click Allow.
 
 ## Settings explained
 What each slider does, and the recommended values that Reset restores.
@@ -256,11 +209,6 @@ What each slider does, and the recommended values that Reset restores.
 - Speed (0.5 to 2.0, recommended 0.95): how fast the voice reads.
 - Blend with (recommended None): mixes in a second voice. See Voice blending.
 
-### Chatterbox
-- Exaggeration (0.25 to 2.0, recommended 0.5): how emotional and dramatic the reading is. Higher values also read faster.
-- Pacing (0 to 1, recommended 0.3): lower values give a slower, more deliberate read. At 0 it stops copying the clip's accent.
-- Temperature (0.3 to 1.5, recommended 0.6): lower values are more consistent with fewer slips; higher values are livelier but skip or garble more often.
-
 ### Pauses
 - Paragraph pause (recommended 0.6 seconds): silence after each paragraph.
 - Heading pause (recommended 1.2 seconds): silence after a chapter heading.
@@ -268,9 +216,8 @@ What each slider does, and the recommended values that Reset restores.
 
 ### Tips
 - Change one setting at a time and preview, so you can hear what it did.
-- If Chatterbox rushes at high Exaggeration, lower Pacing to slow it back down.
 - Changing a voice setting narrates every chapter again on the next Create audiobook. Changing only a pause doesn't: the chapters are put back together from the saved narration in seconds.
-- Reset to recommended, on the Sound step, changes only the sliders. It doesn't change the book, voice, blend or voice clip.
+- Reset to recommended, on the Sound step, changes only the sliders. It doesn't change the book, voice or blend.
 - Each book remembers its own voice, settings, title, author and cover (see Updating a book). Reset changes only the book that is open.
 
 ## Updating a book
@@ -284,18 +231,18 @@ Fix or rewrite a chapter without rendering the whole book again.
 5. Sync your iPhone again (see iPhone & Books).
 
 ### What the app remembers
-- Each book's voice (or voice clip), blend, character voices, every slider, the skipped-word check, title, author and cover are saved in a file called audiobook-settings.json in its chapters folder.
+- Each book's voice, blend, character voices, every slider, title, author and cover are saved in a file called audiobook-settings.json in its chapters folder.
 - They are saved when you click Preview or Create audiobook, when you switch to another chapters folder, and when you quit.
 - Choosing a chapters folder loads what was saved with it. A book that was never saved keeps the current voice and settings, with an empty title, author and cover.
 - When the app opens, it reopens the last chapters folder you used.
-- If a saved voice clip or cover image was moved or deleted, the log says so and it is left out.
+- If a saved cover image was moved or deleted, the log says so and it is left out.
+- A book set up with Chatterbox, which earlier versions had, opens with its Kokoro voice.
 
 ### Redoing a chapter
 1. In the chapter list in the Book section, click Redo next to the chapter.
 2. That chapter is narrated again from the start, and the .m4b is rebuilt. Other chapters are kept.
 
 - Redo only appears on chapters already made with the current voice and settings. A new or edited chapter, or a chapter after you change the voice or a setting, has no Redo until Create audiobook makes it.
-- With Chatterbox, each redo is a new take, so use it when a chapter has a skipped or garbled sentence.
 - With Kokoro, a redo sounds exactly the same, because Kokoro gives the same result every time.
 
 ### Changing the cover, title or author
@@ -308,7 +255,6 @@ Fix or rewrite a chapter without rendering the whole book again.
 - Changing the voice, blend or a voice setting: every chapter.
 - Changing a pause: nothing is narrated again. The chapters are put back together from the saved paragraphs, which takes seconds.
 - Clicking Redo: that chapter.
-- Re-recording or replacing the voice clip: every chapter.
 - Inserting or renumbering chapter files: the chapters whose position changed.
 
 ### Tips
@@ -353,14 +299,13 @@ iCloud doesn't sync audiobooks you add yourself, so copy the book to your iPhone
 Narrating works the Mac's chip hard for a long time. A MacBook Air has no fan, so it gets warm, slows itself down to cool off, and other apps can feel laggy. Gentle mode, in Settings at the bottom of the library pane (or ⌘,), trades some speed for a cooler, more responsive Mac.
 
 ### What it does
-- The voice uses 2 of the Mac's 4 fast cores instead of all of them, which leaves room for everything else. Whisper, the skipped-word check, does the same.
+- The voice uses 2 of the Mac's 4 fast cores instead of all of them, which leaves room for everything else.
 - Narrating is marked as background work, so macOS gives the apps you are using the CPU first.
 - After every 5 minutes of narrating, the app rests for 1 minute so the chip can cool down. The log says when it rests. Cancel works during a rest too.
 
 ### How much slower
 - Kokoro takes about a third longer.
 - A rest only comes before narrating a new paragraph, so rebuilding a finished book, for example with a new cover, never waits.
-- Chatterbox does most of its work on the graphics chip, so fewer cores barely slow it. The rests add about a fifth.
 - Gentle mode doesn't change how the narration sounds, so turning it on or off never makes chapters render again.
 
 ### Tips
@@ -373,17 +318,18 @@ Narrating works the Mac's chip hard for a long time. A MacBook Air has no fan, s
 Download every voice ahead of time, see how much room the voices take, and free it up. Open Settings at the bottom of the library pane (or ⌘,).
 
 ### Steps
-1. Under Voices and storage, each row says whether it is downloaded and how much room it takes: Kokoro voices, Chatterbox, the skipped-word check (Whisper) and the narration cache.
-2. Click Download all voices to fetch everything that is missing, with a progress bar. All of it together is about 4 GB. Click Cancel to stop; what finished is kept, and the next download carries on from there.
+1. Under Voices and storage, each row says whether it is downloaded and how much room it takes: the Kokoro voices and the narration cache.
+2. Click Download all voices to fetch everything that is missing, with a progress bar. All of it together is about 330 MB. Click Cancel to stop; what finished is kept, and the next download carries on from there.
 3. To free up room, click Delete on a row. A deleted voice downloads again the next time you use it.
 
 ### Tips
 - Downloading stops if you close Settings. Finished files are kept.
+- If an earlier version downloaded Chatterbox or the skipped-word check (Whisper), they're listed as no longer used, with how much room they take. Click Delete to free it; they never download again.
 - The narration cache holds every narrated paragraph, so changing a finished book (a new cover, a redone chapter) doesn't narrate it all again. Deleting it keeps your audiobooks, but the next change to a book narrates the whole book again.
 - The voices are kept in Hugging Face's folder (~/.cache/huggingface), which stays if you remove the app. Delete them here first if you are removing the app.
 
 ## Privacy
-- No account, no sign-in and no tracking. Your books, recordings and audiobooks never leave this computer.
+- No account, no sign-in and no tracking. Your books and audiobooks never leave this computer.
 - The app fetches the voices from Hugging Face, the first time each is used. Hugging Face's own usage reporting is turned off.
 - Once a day it asks GitHub whether a new version of the app is out. The request carries nothing about you or your books, and nothing is downloaded or installed. Turn it off in Settings, under Check for updates.
 - Copy details in Settings, for bug reports, includes the app's version and your system but not your name or your files.
@@ -429,21 +375,10 @@ This guide is written for a Mac. On Windows everything works the same way, with 
 5. Double-click Audiobook Maker.bat to start the app.
 
 ### Tips
-- With an NVIDIA graphics card, Chatterbox uses it automatically and runs much faster.
 - Gentle mode still uses fewer cores and rests, but can't lower the app's priority as it does on a Mac.
 
-### Recording is silent, or "Didn't catch 5 seconds of speech"
-1. Open System Settings → Privacy & Security → Microphone.
-2. Turn on Audiobook Maker (or Terminal, if you started the app from Terminal).
-3. Quit and reopen the app, then record again.
-
-### Chatterbox skipped or garbled words
-1. Make sure Check for skipped words is on (see Chatterbox), and look at the check report in your audiobooks folder.
-2. Lower Temperature to about 0.5 and preview.
-3. To redo one chapter without changing settings, click Redo next to it in the chapter list (see Updating a book).
-
 ### "hasn't been downloaded yet"
-- Each Kokoro voice, Chatterbox's model and Whisper download the first time they are used, so that first use needs the internet. Connect once and try again; after that they work offline.
+- Kokoro's model and each of its voices download the first time they are used, so that first use needs the internet. Connect once and try again; after that they work offline.
 - To make every voice work offline, open Settings and click Download all voices while you're online.
 - Character voices count too: a character's voice that has never been used before has to download.
 

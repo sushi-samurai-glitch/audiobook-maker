@@ -15,8 +15,6 @@ import soundfile as sf
 import book_settings
 import cast
 import paths
-import checker
-import desktop
 import tools
 
 PARAGRAPH_PAUSE = 0.6
@@ -25,7 +23,7 @@ SCENE_PAUSE = 2.0  # silence at a scene break (---, *** or * * * on its own line
 DEFAULT_TAG_PAUSE = 1.0  # [pause] without a number
 SAMPLE_CHARS = 1500
 PRONUNCIATIONS_FILE = book_settings.PRONUNCIATIONS_FILE
-SAMPLE_RATE = 24000  # both Kokoro and Chatterbox narrate at 24 kHz
+SAMPLE_RATE = 24000  # Kokoro narrates at 24 kHz
 
 # Loudness of each chapter in the finished files, within what audiobook stores (ACX) accept:
 # about -20 dB average (they allow -23 to -18) with peaks no higher than -3 dB.
@@ -36,7 +34,7 @@ MP3_BITRATE = "192k"
 ROOM_TONE = (0.75, 2.0)  # seconds of silence at the start and end of each MP3, as ACX asks
 
 # Gentle mode, for a Mac without a fan. Measured on an M4 MacBook Air: Kokoro on 2 threads instead of all 4
-# fast cores is about 15% slower but uses 40% less CPU; Chatterbox runs on the GPU and barely notices.
+# fast cores is about 15% slower but uses 40% less CPU.
 GENTLE_THREADS = 2
 WORK_STRETCH = 300  # seconds of narrating before gentle mode rests
 REST = 60  # seconds of rest, so the chip cools down instead of throttling itself
@@ -45,6 +43,7 @@ QOS_CLASS_UTILITY = 0x11  # macOS: long-running work the person isn't waiting on
 # [pause], [pause 2], [pause 2s], [pause 1.5 s]: extra silence at that spot.
 PAUSE_TAG = re.compile(r"\[pause(?:\s+(\d+(?:\.\d+)?)\s*s?)?\]", re.I)
 SCENE_BREAK = "\x00scene\x00"
+ENGINE = "kokoro"  # the start of render and preview names (build/<book>/kokoro-am_michael, samples/kokoro-am_michael.wav)
 
 
 def md_to_paragraphs(md, paragraph_pause=PARAGRAPH_PAUSE, title_pause=TITLE_PAUSE, scene_pause=SCENE_PAUSE):
@@ -192,50 +191,40 @@ def with_rests(synth, log=print, cancel=None, work=WORK_STRETCH, rest=REST, cloc
     return rested
 
 
-def load_engine(args):
+def load_engine(args, log=print):
     """Return (sample_rate, synth) where synth(text) -> float32 numpy array."""
     limit_threads(getattr(args, "gentle", False))
-    if args.engine == "kokoro":
-        from kokoro import KPipeline
+    from kokoro import KPipeline
 
-        pipelines = {args.voice[0]: KPipeline(lang_code=args.voice[0], repo_id="hexgrad/Kokoro-82M")}
+    pipelines = {args.voice[0]: KPipeline(lang_code=args.voice[0], repo_id="hexgrad/Kokoro-82M")}
 
-        def synth(text, voice=None):
-            """voice is a character's voice; None means the narrator's (args.voice)."""
-            voice = voice or args.voice
-            if voice[0] not in pipelines:  # a British character in an American book, or the other way round
-                first = next(iter(pipelines.values()))
-                pipelines[voice[0]] = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M", model=first.model)
-            parts = [audio.numpy() for _, _, audio in pipelines[voice[0]](text, voice=voice, speed=args.speed)]
-            return np.concatenate(parts) if parts else np.zeros(0, dtype=np.float32)
-
-        return 24000, synth
-
-    import torch
-    from chatterbox.tts import ChatterboxTTS
-
-    # An NVIDIA card on Windows or Linux, the GPU of an Apple silicon Mac, or else the CPU.
-    device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-    model = ChatterboxTTS.from_pretrained(device=device)
-
-    def synth(text, voice=None):  # Chatterbox has no character voices; voice is ignored
-        parts = [
-            model.generate(chunk, audio_prompt_path=args.ref, exaggeration=args.exaggeration,
-                           cfg_weight=args.cfg_weight, temperature=args.temperature)
-            .squeeze(0).cpu().numpy()
-            for chunk in sentence_chunks(text)
-        ]
+    def synth(text, voice=None):
+        """voice is a character's voice; None means the narrator's (args.voice)."""
+        voice = voice or args.voice
+        if voice[0] not in pipelines:  # a British character in an American book, or the other way round
+            first = next(iter(pipelines.values()))
+            pipelines[voice[0]] = KPipeline(lang_code=voice[0], repo_id="hexgrad/Kokoro-82M", model=first.model)
+        parts = [audio.numpy() for _, _, audio in pipelines[voice[0]](text, voice=voice, speed=args.speed)]
         return np.concatenate(parts) if parts else np.zeros(0, dtype=np.float32)
 
-    return model.sr, synth
+    return 24000, synth
 
 
-# Each engine's voice model on Hugging Face, and roughly how much the first use downloads.
-MODELS = {"kokoro": ("hexgrad/Kokoro-82M", "about 330 MB"), "chatterbox": ("ResembleAI/chatterbox", "about 3 GB")}
+def not_downloaded(error):
+    """True if error (or what caused it) means a model file isn't on this Mac and the internet couldn't be reached."""
+    while error is not None:
+        if type(error).__name__ == "LocalEntryNotFoundError":  # from huggingface_hub, which downloads the models
+            return True
+        error = error.__cause__ or error.__context__
+    return False
 
 
-def model_downloaded(engine, cache=None):
-    """Whether the engine's voice model is already on this computer (in the Hugging Face cache)."""
+# The voice model on Hugging Face, and roughly how much the first use downloads.
+MODELS = {"kokoro": ("hexgrad/Kokoro-82M", "about 330 MB")}
+
+
+def model_downloaded(engine="kokoro", cache=None):
+    """Whether the voice model is already on this computer (in the Hugging Face cache)."""
     if cache is None:
         try:
             from huggingface_hub.constants import HF_HUB_CACHE as cache
@@ -247,7 +236,7 @@ def model_downloaded(engine, cache=None):
 
 class LazyVoice:
     """Loads the voice model only when a paragraph actually needs narrating, so rebuilding a finished book
-    (new cover, title, MP3 export) doesn't wait for Chatterbox or Kokoro to load."""
+    (new cover, title, MP3 export) doesn't wait for Kokoro to load."""
 
     def __init__(self, args, log=print, report=None, cancel=None):
         self.args, self.log, self.synth = args, log, None
@@ -255,11 +244,9 @@ class LazyVoice:
         self.cancel = cancel
 
     def needed_files(self):
-        """{pack key: files} the run needs: Chatterbox's model, or Kokoro's model and the voices this book uses."""
+        """{pack key: files} the run needs: Kokoro's model and the voices this book uses."""
         import downloads
 
-        if self.args.engine == "chatterbox":
-            return {"chatterbox": list(downloads.PACKS["chatterbox"].files)}
         voices = {v.strip() for v in self.args.voice.split(",") if v.strip()}
         cast = cast_voices(self.args) or {}
         voices |= {v for v in [cast.get("dialogue"), *(cast.get("voices") or {}).values()] if v}
@@ -277,8 +264,7 @@ class LazyVoice:
             return
         if not missing:
             return
-        size = ("about 3 GB" if key == "chatterbox" else "about 330 MB" if "kokoro-v1_0.pth" in missing
-                else "a few MB")
+        size = "about 330 MB" if "kokoro-v1_0.pth" in missing else "a few MB"
         self.log(f"Downloading what this voice needs ({size}). This happens only once, and can take a while on a "
                  "slow connection…")
         said = [-1]
@@ -299,17 +285,15 @@ class LazyVoice:
         try:
             if self.synth is None:
                 self.download()
-                sr, self.synth = load_engine(self.args)
+                sr, self.synth = load_engine(self.args, log=self.log)
                 if sr != SAMPLE_RATE:
-                    raise RuntimeError(f"{self.args.engine} narrates at {sr} Hz, but the app expects {SAMPLE_RATE} Hz")
+                    raise RuntimeError(f"Kokoro narrates at {sr} Hz, but the app expects {SAMPLE_RATE} Hz")
             return self.synth(text, voice) if voice else self.synth(text)
         except Exception as e:
-            if not checker.not_downloaded(e):
+            if not not_downloaded(e):
                 raise
-            # Each Kokoro voice, and each model, downloads the first time it's used.
-            if self.args.engine == "chatterbox":
-                what = "Chatterbox's voice model hasn't"
-            elif self.synth is None:
+            # Each Kokoro voice, and the model, downloads the first time it's used.
+            if self.synth is None:
                 what = "Kokoro's voice model hasn't"
             else:
                 what = f"The Kokoro voice {voice or self.args.voice} hasn't"
@@ -441,7 +425,7 @@ def safe_name(text):
 
 
 def out_name(args):
-    """The name the book's files in out/ share: the .m4b, the MP3 folder and the check report.
+    """The name the book's files in out/ share: the .m4b and the MP3 folder (and the check report earlier versions made).
 
     The app picks one no other book uses (library.claim_output); without one it is the title, made safe for a file name."""
     return getattr(args, "output_name", None) or safe_name(args.title)
@@ -453,10 +437,6 @@ def m4b_path(args):
 
 def mp3_folder(args):
     return paths.OUT / f"{out_name(args)} (MP3)"
-
-
-def report_path(args):
-    return paths.OUT / f"{out_name(args)} - check report.txt"
 
 
 def export_mp3(chapters, wavs, args, progress=None):
@@ -545,14 +525,9 @@ def main():
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")  # no usage reports to Hugging Face
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--chapters", default="chapters", help="folder of .md or .txt files, one per chapter, sorted by name")
-    p.add_argument("--engine", choices=["kokoro", "chatterbox"], default="kokoro")
     p.add_argument("--voice", default="am_michael",
                    help="Kokoro voice, e.g. af_heart, am_michael, bf_emma; blend voices with a comma: am_michael,bm_george")
     p.add_argument("--speed", type=float, default=1.0, help="Kokoro speaking speed")
-    p.add_argument("--ref", help="Chatterbox: ~10s WAV of the voice to clone")
-    p.add_argument("--exaggeration", type=float, default=0.5, help="Chatterbox expressiveness (0.25-2.0)")
-    p.add_argument("--cfg-weight", type=float, default=0.5, help="Chatterbox pacing; lower is slower and more deliberate")
-    p.add_argument("--temperature", type=float, default=0.8, help="Chatterbox variation; lower is more consistent")
     p.add_argument("--paragraph-pause", type=float, default=PARAGRAPH_PAUSE, help="seconds of silence after a paragraph")
     p.add_argument("--title-pause", type=float, default=TITLE_PAUSE, help="seconds of silence after a heading")
     p.add_argument("--scene-pause", type=float, default=SCENE_PAUSE, help="seconds of silence at a scene break (---)")
@@ -561,7 +536,6 @@ def main():
     p.add_argument("--cast", help="character voices as JSON, e.g. '{\"enabled\": true, \"dialogue\": \"af_heart\", "
                                    "\"voices\": {\"Mara\": \"bf_emma\"}}'")
     p.add_argument("--mp3", action="store_true", help="also export one MP3 per chapter (44.1 kHz, 192 kbps) to out/")
-    p.add_argument("--check", action="store_true", help="Chatterbox: transcribe each new paragraph with Whisper and retry skips")
     p.add_argument("--gentle", action="store_true",
                    help="fewer threads, lower priority and a short rest every few minutes, for a laptop without a fan")
     p.add_argument("--title", default="Audiobook")
@@ -600,15 +574,11 @@ def prepare(args, log=print):
         # Applied before hashing, so editing the list re-renders only the chapters that use a changed word.
         chapters.append((title, apply_pronunciations(paragraphs, rules)))
 
-    voice_id = args.voice if args.engine == "kokoro" else (Path(args.ref).stem if args.ref else "default")
-    if args.engine == "kokoro":
-        settings = (args.speed,)
-    else:
-        # Hash the clip's contents, not its path, so re-recording a voice under the same name re-renders.
-        ref_digest = hashlib.sha1(Path(args.ref).read_bytes()).hexdigest() if args.ref else None
-        settings = (ref_digest, args.exaggeration, args.cfg_weight, args.temperature)
+    voice_id = args.voice
+    settings = (args.speed,)
     # Character-voice renders get their own folder, so switching back to one voice reuses the one-voice renders.
-    build = book_folder(args.chapters) / f"{args.engine}-{voice_id}{'-cast' if voices else ''}"
+    # The "kokoro-" start is from when there was a second engine; it stays so books made then are reused.
+    build = book_folder(args.chapters) / f"{ENGINE}-{voice_id}{'-cast' if voices else ''}"
     return chapters, settings, voice_id, voices, build
 
 
@@ -620,7 +590,7 @@ def chapter_wav(build, i, paragraphs, settings):
 
 
 def legacy_folder(args, voice_id):
-    return Path("build") / f"{args.engine}-{voice_id}"  # where earlier versions kept every book's renders
+    return Path("build") / f"{ENGINE}-{voice_id}"  # where earlier versions kept every book's renders
 
 
 def made_chapters(args):
@@ -654,16 +624,6 @@ def run(args, log=print, cancel=None, progress=None):
         lower_priority()
         log("Gentle mode: narrating more slowly to keep your computer cool and responsive")
 
-    # Chatterbox sometimes skips or garbles a sentence; Kokoro doesn't, so only Chatterbox is checked.
-    problems, where = [], {"label": ""}
-    check = args.engine == "chatterbox" and getattr(args, "check", False)
-    if check and not checker.available():
-        log(f"To check for skipped words, install faster-whisper. {desktop.install_hint('faster-whisper')}")
-        check = False
-    if check:
-        threads = GENTLE_THREADS if gentle else 0  # 0: faster-whisper's default, every fast core
-        transcribe = getattr(args, "transcribe", None) or checker.Whisper(log=log, threads=threads).transcribe
-        synth = checker.checked(synth, sr, transcribe, log=log, problems=problems, where=lambda: where["label"])
     if gentle:
         synth = with_rests(synth, log, cancel, WORK_STRETCH, REST, resting=lambda now: report("rest", int(now), 1))
 
@@ -674,12 +634,9 @@ def run(args, log=print, cancel=None, progress=None):
             total += len(para[0])
             if total >= SAMPLE_CHARS:
                 break
-        out = Path("samples") / f"{args.engine}-{voice_id}.wav"
-        where["label"] = "Preview: "
-        # Always a fresh take (Chatterbox varies each time); the full build then reuses the one you heard.
+        out = Path("samples") / f"{ENGINE}-{voice_id}.wav"
+        # Always a fresh take; the full build then reuses the one you heard.
         render(paragraphs, sr, synth, out, cancel, cache, redo=True)
-        if check:
-            update_flags(build, cache, problems)  # the full build reuses this take, so remember its problems
         log(f"Wrote {out}")
         return out
 
@@ -700,7 +657,6 @@ def run(args, log=print, cancel=None, progress=None):
             report("chapter", i, len(chapters), {"kept": True})
             continue
         t = time.time()
-        where["label"] = f"Chapter {i}: "
         render(paragraphs, sr, synth, wav, cancel, cache, redo=i in redo)
         audio, took = sf.info(wav).duration / 60, (time.time() - t) / 60
         log(f"[{i}/{len(chapters)}] {title}: {audio:.1f} min audio in {took:.1f} min")
@@ -723,16 +679,14 @@ def run(args, log=print, cancel=None, progress=None):
     count, freed = clean_up(build, keep)
     if count:
         log(f"Deleted {count} old render{'s' if count != 1 else ''} ({freed / 1e6:.0f} MB)")
-    if check:
-        update_check_report(build, cache, keep, problems, args, log)
     return out
 
 
 def cast_voices(args):
     """The book's character voices as {"dialogue": voice or None, "voices": {name: voice}}, or None when the
-    book is read in one voice. Only Kokoro has character voices."""
+    book is read in one voice. Voices are Kokoro names like af_heart."""
     config = getattr(args, "cast", None) or {}
-    if args.engine != "kokoro" or not config.get("enabled"):
+    if not config.get("enabled"):
         return None
     narrator = args.voice
     same = lambda voice: None if not voice or voice == narrator else voice  # the narrator's voice means "no change"
@@ -802,44 +756,6 @@ def scan_cast(folder, config=None):
     characters = sorted(lines.items(), key=lambda item: (-item[1], item[0]))
     return characters, unknown, "\n".join(report)
 
-
-def update_flags(build, cache, problems, keep=None):
-    """Keep the list of doubtful paragraphs for the whole book in build/check.json, not just this run's.
-
-    A paragraph leaves the list when it is narrated again and passes, or (given keep) when the book no longer
-    uses it. Returns the list."""
-    flagged_file = build / "check.json"
-    flagged = checker_json(flagged_file)
-    for path in cache.fresh:
-        flagged.pop(path.name, None)
-    for problem in problems:
-        flagged[cache.path(problem["text"]).name] = problem
-    if keep is not None:
-        names = {path.name for path in keep}
-        flagged = {name: problem for name, problem in flagged.items() if name in names}
-    build.mkdir(parents=True, exist_ok=True)
-    flagged_file.write_text(json.dumps(flagged, indent=1, ensure_ascii=False), encoding="utf-8")
-    return list(flagged.values())
-
-
-def update_check_report(build, cache, keep, problems, args, log):
-    """Write the doubtful paragraphs next to the .m4b, or remove an old report when there are none."""
-    flagged = update_flags(build, cache, problems, keep)
-    report = report_path(args)
-    if flagged:
-        checker.write_report(report, args.title, flagged)
-        log(f"{len(flagged)} paragraph{'s' if len(flagged) != 1 else ''} may still have skipped words: see {report}")
-    else:
-        report.unlink(missing_ok=True)
-        log("Check: no skipped words found in the paragraphs narrated with checking on")
-
-
-def checker_json(path):
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
-        return {}
 
 
 if __name__ == "__main__":

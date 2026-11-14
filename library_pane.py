@@ -5,6 +5,7 @@ import webbrowser
 import customtkinter as ctk
 
 import library
+from icons import HIT, icon
 from gui_common import REVEAL_LABEL
 from delete_windows import length, preview_files, preview_name
 from theme import (AMBER, AMBER_LINE, AMBER_SOFT, CARD, FIELD_LINE, FOOTER, LINE, TEXT, TEXT2, TEXT3, F, button, entry,
@@ -58,9 +59,9 @@ class LibraryPane(ctk.CTkFrame):
                                         corner_radius=8, fg_color=AMBER_SOFT, hover_color=AMBER_LINE,
                                         text_color=AMBER, font=F(13, "bold"))
         self.update_url = None
-        self.settings_btn = self.pane_button(bottom, "Settings", app.show_settings)
+        self.settings_btn = self.pane_button(bottom, "Settings", "settings", app.show_settings)
         self.settings_btn.grid(row=1, column=0, sticky="ew")
-        self.help_btn = self.pane_button(bottom, "Help", app.show_help)
+        self.help_btn = self.pane_button(bottom, "Help", "help", app.show_help)
         self.help_btn.grid(row=2, column=0, sticky="ew")
 
     def show_update(self, found):
@@ -76,9 +77,11 @@ class LibraryPane(ctk.CTkFrame):
         if self.update_url:
             webbrowser.open(self.update_url)
 
-    def pane_button(self, parent, text, command):
-        return ctk.CTkButton(parent, text=text, command=command, anchor="w", height=34, corner_radius=8,
-                             fg_color="transparent", hover_color=HOVER, text_color=TEXT2, font=F(13, "bold"))
+    def pane_button(self, parent, text, icon_name, command):
+        """A Settings or Help row: a 20 point icon and its name, 40 points tall so it's easy to hit."""
+        return ctk.CTkButton(parent, text=text, image=icon(icon_name, TEXT2), compound="left", command=command,
+                             anchor="w", height=HIT, width=HIT, corner_radius=8, fg_color="transparent",
+                             hover_color=HOVER, text_color=TEXT2, font=F(13, "bold"))
 
     def toggle(self, auto=False):
         """Open or close the pane. auto: the window's width did it, so widening the window opens it again."""
@@ -90,8 +93,8 @@ class LibraryPane(ctk.CTkFrame):
             self.list.grid_remove()
             self.toggle_btn.configure(text="›")
             self.new_btn.configure(text="＋", anchor="center")
-            self.settings_btn.configure(text="⚙", anchor="center")
-            self.help_btn.configure(text="?", anchor="center")
+            self.settings_btn.configure(text="", anchor="center")
+            self.help_btn.configure(text="", anchor="center")
             self.update_btn.configure(text="↑", anchor="center")
         else:
             self.configure(width=WIDTH)

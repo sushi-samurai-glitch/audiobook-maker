@@ -76,7 +76,7 @@ def test_finished_book_rebuilds_without_loading_the_voice(tmp_path, monkeypatch)
     (folder / "01.md").write_text("Hello there.")
     loads = []
 
-    def load_engine(args):
+    def load_engine(args, **_):
         loads.append(1)
         return audiobook.SAMPLE_RATE, lambda text: np.full(2400, 0.1, dtype=np.float32)
 
@@ -97,7 +97,7 @@ def test_old_levelled_chapters_are_cleaned_up(tmp_path, monkeypatch):
     folder.mkdir()
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(audiobook, "load_engine",
-                        lambda args: (audiobook.SAMPLE_RATE, lambda text: np.full(2400, 0.1, dtype=np.float32)))
+                        lambda args, **_: (audiobook.SAMPLE_RATE, lambda text: np.full(2400, 0.1, dtype=np.float32)))
     monkeypatch.setattr(audiobook, "build_m4b", lambda chapters, wavs, args, progress=None: Path("out/Book.m4b"))
     args = SimpleNamespace(chapters=str(folder), engine="kokoro", voice="am_michael", speed=1.0, ref=None,
                            paragraph_pause=0.6, title_pause=1.2, sample=False, title="Book", author="Me", cover=None)
@@ -136,7 +136,7 @@ def test_full_build_reports_each_stage_in_order(tmp_path, monkeypatch):
         (folder / f"0{n}.md").write_text(f"Chapter {n} text.")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(audiobook, "load_engine",
-                        lambda args: (audiobook.SAMPLE_RATE, lambda text: np.full(2400, 0.1, dtype=np.float32)))
+                        lambda args, **_: (audiobook.SAMPLE_RATE, lambda text: np.full(2400, 0.1, dtype=np.float32)))
     args = SimpleNamespace(chapters=str(folder), engine="kokoro", voice="am_michael", speed=1.0, ref=None,
                            paragraph_pause=0.6, title_pause=1.2, sample=False, title="Book", author="Me", cover=None)
     steps = []

@@ -2,7 +2,6 @@
 # Build Audiobook Maker.app and a .dmg for Apple silicon Macs.
 #   packaging/build_mac.sh            build, check, and make the .dmg in dist-build/
 #   SKIP_NARRATE=1 packaging/build_mac.sh      skip the Kokoro narration check
-#   CHECK_CHATTERBOX=1 packaging/build_mac.sh  also narrate a sentence with Chatterbox (model must be downloaded)
 # Needs: an Apple silicon Mac, uv (https://docs.astral.sh/uv/), curl and the internet. Nothing is installed
 # outside dist-build/ and packaging/bin/.
 set -euo pipefail
@@ -57,7 +56,6 @@ APP="$OUT/dist/Audiobook Maker.app"
 
 echo "== Self-check of the built app"
 CHECK=(--self-check)
-[ -n "${CHECK_CHATTERBOX:-}" ] && CHECK+=(--chatterbox)  # slow: needs Chatterbox's 3 GB model downloaded already
 if [ -z "${SKIP_NARRATE:-}" ]; then
     CHECK+=(--narrate)
     # The narration check runs offline, so fetch Kokoro's model and one voice first if they aren't here yet.
